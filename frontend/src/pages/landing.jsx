@@ -1,5 +1,13 @@
 // App.js
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import usersImage from "../Images/nn.png";
+import countries from "../Images/countries.png";
+import actives from "../Images/active.png";
+
+import user1 from "../Images/user1.jpg";
+import user2 from "../Images/user2.jpg";
+import user3 from "../Images/user3.jpg";
+
 import { 
   FaUsers, FaClock, FaMoneyBillWave, FaShieldAlt, 
   FaChartLine, FaCloud, FaMobile, FaHeadset,
@@ -7,7 +15,7 @@ import {
   FaFacebook, FaTwitter, FaLinkedin, FaInstagram,
   FaBars, FaTimes, FaCalculator, FaFileInvoice,
   FaUserCheck, FaRocket,
-  FaFileExport
+  FaFileExport, FaGlobe
 } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
 import { Link } from 'react-router-dom';
@@ -165,12 +173,13 @@ const LandingPage = () => {
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
             {[
-              { number: '10K+', label: 'Active Users', icon: FaUsers },
-              { number: '50+', label: 'Countries', icon: FaGlobe },
-              { number: '99.9%', label: 'Uptime', icon: FaCloud }
+              { number: '10K+', image: usersImage, label: 'Active Users', icon: FaUsers },
+              { number: '50+', image: countries, label: 'Countries', icon: FaGlobe },
+              { number: '99.9%', image: actives, label: 'Uptime', icon: FaCloud }
             ].map((stat, index) => (
               <div key={index} className="animate-on-scroll bg-white/10 backdrop-blur-lg rounded-2xl p-6 hover:bg-white/20 transition-all duration-500">
                 <stat.icon className="text-4xl mx-auto mb-3 text-yellow-300" />
+                <img src={stat.image} alt="Users" className='rounded'/>
                 <div className="text-3xl font-bold">{stat.number}</div>
                 <div className="text-sm opacity-80">{stat.label}</div>
               </div>
@@ -328,6 +337,7 @@ const LandingPage = () => {
             {[
               {
                 name: 'Sarah Johnson',
+                profile: user1,
                 role: 'HR Director, TechCorp',
                 content: 'PayFlow has reduced our payroll processing time by 75%. The automation is incredible!',
                 rating: 5
@@ -335,11 +345,13 @@ const LandingPage = () => {
               {
                 name: 'Michael Chen',
                 role: 'CEO, StartUp Inc',
+                profile: user2,
                 content: 'Finally a payroll system that actually saves time. The interface is intuitive and support is amazing.',
                 rating: 5
               },
               {
                 name: 'Emily Rodriguez',
+                profile: user3,
                 role: 'Finance Manager, Global Ltd',
                 content: 'Compliance features alone are worth it. Never worry about tax calculations again.',
                 rating: 5
@@ -353,6 +365,7 @@ const LandingPage = () => {
                     ))}
                   </div>
                   <p className="text-gray-700 mb-6 text-lg">{testimonial.content}</p>
+                  <img src={testimonial.profile} alt="Profile Picture" className='h-70 w-60 rounded'/>
                   <div className="font-bold text-gray-800">{testimonial.name}</div>
                   <div className="text-gray-500 text-sm">{testimonial.role}</div>
                 </div>
@@ -438,12 +451,5 @@ const LandingPage = () => {
     </div>
   );
 };
-
-// Add missing FaGlobe icon
-const FaGlobe = (props) => (
-  <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" {...props}>
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path>
-  </svg>
-);
 
 export default LandingPage;
