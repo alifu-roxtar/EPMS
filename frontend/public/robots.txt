@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://epms-swart.vercel.app/sitemap.xml
