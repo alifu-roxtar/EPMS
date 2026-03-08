@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(cors());
 
 app.use(devLiteMonitorRealtime({
-    apiKey: ''
+    apiKey: 'a9d58ca38c0b58eba048fa67d33c39123e14fcffc648a2a3367a4a67114eb188'
 }))
 
 connectDB();
