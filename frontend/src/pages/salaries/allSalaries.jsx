@@ -1,433 +1,600 @@
-// allSalaries.jsx
-import { useEffect, useState } from "react";
 import SideBar from "../account/sidebar";
+import { useState, useEffect } from "react";
+import API from "../../components/api";
 import { 
-    FaFileUpload, 
-    FaEdit, 
-    FaTrash, 
-    FaSearch, 
+    FaFileAlt, 
+    FaDownload, 
+    FaCalendarAlt,
+    FaChartBar,
+    FaChartPie,
+    FaChartLine,
+    FaUsers,
+    FaBuilding,
+    FaMoneyBillWave,
+    FaPrint,
+    FaFilePdf,
+    FaFileExcel,
     FaFilter,
     FaSync,
-    FaMoneyBillWave,
-    FaCalendarAlt,
-    FaUserCircle,
-    FaTimes,
-    FaSave,
     FaEye,
+    FaTimes,
     FaCheckCircle,
-    FaTimesCircle,
     FaClock,
-    FaChartPie,
-    FaDownload,
-    FaPrint
+    FaUserTie,
+    FaBriefcase,
+    FaDollarSign,
+    FaPercentage,
+    FaRegCalendarAlt,
+    FaRegChartBar,
+    FaRegClock,
+    FaRegUser,
+    FaRegBuilding,
+    FaFileExport,
+    FaFileInvoice,
+    FaHistory,
+    FaRegFileAlt,
+    FaRegMoneyBillAlt,
+    FaRegCheckCircle,
+    FaRegTimesCircle,
+    FaSpinner
 } from "react-icons/fa";
-import API from "../../components/api";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
-function Salaries() {
-    const [salaries, setSalaries] = useState([]);
-    const [filteredSalaries, setFilteredSalaries] = useState([]);
-    const [employees, setEmployees] = useState([]);
+function GetReport() {
+    const [reportType, setReportType] = useState('monthly');
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedWeek, setSelectedWeek] = useState(1);
+    const [dateRange, setDateRange] = useState({
+        startDate: '',
+        endDate: ''
+    });
+    const [loading, setLoading] = useState(false);
+    const [generating, setGenerating] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [reportData, setReportData] = useState(null);
     const [departments, setDepartments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [statsLoading, setStatsLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedMonth, setSelectedMonth] = useState("");
-    const [selectedYear, setSelectedYear] = useState("");
-    const [selectedStatus, setSelectedStatus] = useState("");
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [selectedSalary, setSelectedSalary] = useState(null);
-    const [stats, setStats] = useState({
-        totalSalaries: 0,
-        totalAmount: 0,
-        totalPaid: 0,
-        totalPending: 0,
-        averageSalary: 0,
-        byStatus: { paid: 0, pending: 0, cancelled: 0 }
+    const [employees, setEmployees] = useState([]);
+    const [salaries, setSalaries] = useState([]);
+    const [filters, setFilters] = useState({
+        department: '',
+        status: '',
+        employee: ''
     });
-    const [formData, setFormData] = useState({
-        employeeId: "",
-        GrossSalary: "",
-        TotalDeduction: "",
-        month: "",
-        year: new Date().getFullYear(),
-        paymentMethod: "bank transfer",
-        status: "pending",
-        notes: ""
-    });
-    const [errors, setErrors] = useState({});
-    const [formLoading, setFormLoading] = useState(false);
+    console.log(loading);
+    const [showFilters, setShowFilters] = useState(false);
+    const [exportFormat, setExportFormat] = useState('pdf');
 
-    // Fetch data on component mount
+    // Months array
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    // Years array (last 5 years)
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
     useEffect(() => {
-        fetchEmployees();
-        fetchDepartments();
-        fetchSalaries();
-        fetchStats();
+        fetchData();
     }, []);
 
-    // Filter salaries based on search and filters
-    useEffect(() => {
-        let filtered = salaries;
-
-        if (searchTerm) {
-            filtered = filtered.filter(salary => 
-                salary.employeeId?.FirstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                salary.employeeId?.LastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                salary.employeeId?.employeeNumber?.toString().includes(searchTerm) ||
-                salary.employeeId?.Position?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-
-        if (selectedMonth) {
-            filtered = filtered.filter(s => s.month === parseInt(selectedMonth));
-        }
-
-        if (selectedYear) {
-            filtered = filtered.filter(s => s.year === parseInt(selectedYear));
-        }
-
-        if (selectedStatus) {
-            filtered = filtered.filter(s => s.status === selectedStatus);
-        }
-
-        setFilteredSalaries(filtered);
-    }, [searchTerm, selectedMonth, selectedYear, selectedStatus, salaries]);
-
-    const fetchEmployees = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await API.get('/employees/all', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const employeeData = res.data.employees || res.data;
-            setEmployees(employeeData);
-        } catch (error) {
-            console.error("Error fetching employees:", error);
-        }
-    };
-
-    const fetchDepartments = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await API.get('/departments/all', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setDepartments(res.data);
-        } catch (error) {
-            console.error("Error fetching departments:", error);
-        }
-    };
-
-    const fetchSalaries = async () => {
+    const fetchData = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await API.get('/salaries/all', {
+            
+            // Fetch departments
+            const deptRes = await API.get('/departments/all', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const salaryData = res.data.salaries || res.data;
-            setSalaries(salaryData);
-            setFilteredSalaries(salaryData);
+            setDepartments(deptRes.data);
+
+            // Fetch employees
+            const empRes = await API.get('/employees/all', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setEmployees(empRes.data.employees || empRes.data);
+
+            // Fetch salaries
+            const salRes = await API.get('/salaries/all', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSalaries(salRes.data.salaries || salRes.data);
+
         } catch (error) {
-            console.error("Error fetching salaries:", error);
-            if (error.response?.status === 401) {
-                handleUnauthorized();
-            }
+            console.error("Error fetching data:", error);
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchStats = async () => {
-        setStatsLoading(true);
+    const generateReport = async () => {
+        setGenerating(true);
+        
         try {
-            const token = localStorage.getItem('token');
-            const res = await API.get('/salaries/stats', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data.success) {
-                setStats(res.data.stats);
-            }
-        } catch (error) {
-            console.error("Error fetching stats:", error);
-        } finally {
-            setStatsLoading(false);
-        }
-    };
-
-    const handleUnauthorized = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('uid');
-        window.location.href = '/login';
-    };
-
-    const getEmployeeName = (employeeId) => {
-        if (!employeeId) return "Unknown";
-        const emp = employees.find(e => e._id === employeeId);
-        return emp ? `${emp.FirstName} ${emp.LastName}` : "Unknown";
-    };
-
-    const getDepartmentName = (employeeId) => {
-        if (!employeeId) return "Unknown";
-        const emp = employees.find(e => e._id === employeeId);
-        if (!emp || !emp.departmentId) return "Unknown";
-        
-        if (typeof emp.departmentId === 'object') {
-            return emp.departmentId.departmentName;
-        }
-        
-        const dept = departments.find(d => d._id === emp.departmentId);
-        return dept ? dept.departmentName : "Unknown";
-    };
-
-    const getMonthName = (monthNumber) => {
-        const months = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ];
-        return months[monthNumber - 1] || "Unknown";
-    };
-
-    const getStatusBadge = (status) => {
-        const badges = {
-            'paid': 'bg-green-100 text-green-800',
-            'pending': 'bg-yellow-100 text-yellow-800',
-            'cancelled': 'bg-red-100 text-red-800'
-        };
-        return badges[status] || 'bg-gray-100 text-gray-800';
-    };
-
-    const getStatusIcon = (status) => {
-        const icons = {
-            'paid': <FaCheckCircle className="text-green-500" />,
-            'pending': <FaClock className="text-yellow-500" />,
-            'cancelled': <FaTimesCircle className="text-red-500" />
-        };
-        return icons[status] || <FaClock />;
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-
-        // Auto-calculate Net Salary
-        if (name === 'GrossSalary' || name === 'TotalDeduction') {
-            const gross = parseFloat(name === 'GrossSalary' ? value : formData.GrossSalary) || 0;
-            const deduction = parseFloat(name === 'TotalDeduction' ? value : formData.TotalDeduction) || 0;
-            const net = gross - deduction;
-            setFormData(prev => ({
-                ...prev,
-                NetSalary: net >= 0 ? net : 0
-            }));
-        }
-
-        // Clear error for this field
-        if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: ""
-            }));
-        }
-    };
-
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formData.employeeId) newErrors.employeeId = "Employee is required";
-        if (!formData.GrossSalary || formData.GrossSalary <= 0) newErrors.GrossSalary = "Valid gross salary is required";
-        if (!formData.month) newErrors.month = "Month is required";
-        if (!formData.year) newErrors.year = "Year is required";
-
-        // Check if salary already exists for this employee/month/year
-        const existingSalary = salaries.find(s => 
-            s.employeeId === formData.employeeId && 
-            s.month === parseInt(formData.month) && 
-            s.year === parseInt(formData.year) &&
-            (!selectedSalary || s._id !== selectedSalary._id)
-        );
-
-        if (existingSalary) {
-            newErrors.employeeId = "Salary already exists for this employee in the selected month/year";
-        }
-
-        return newErrors;
-    };
-
-    const handleCreate = async (e) => {
-    e.preventDefault();
-    
-    const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        return;
-    }
-
-    setFormLoading(true);
-    try {
-        const token = localStorage.getItem('token');
-        
-        // Log the data being sent
-        console.log("Sending salary data:", formData);
-        
-        // Make sure the URL is correct - no trailing slash
-        const res = await API.post('/salaries/create', formData, {
-            headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        console.log("Response:", res.data);
-        
-        alert(res.data.msg || "Salary created successfully");
-        setIsCreateModalOpen(false);
-        resetForm();
-        fetchSalaries();
-        fetchStats();
-    } catch (error) {
-        console.error("Error creating salary:", error);
-        
-        // More detailed error logging
-        if (error.response) {
-            console.error("Error response data:", error.response.data);
-            console.error("Error response status:", error.response.status);
-            alert(error.response.data?.msg || `Server error: ${error.response.status}`);
-        } else if (error.request) {
-            console.error("Error request:", error.request);
-            alert("No response from server. Please check if the server is running.");
-        } else {
-            console.error("Error message:", error.message);
-            alert(error.message || "Failed to create salary");
-        }
-    } finally {
-        setFormLoading(false);
-    }
-};
-5
-
-  
-    const handleEdit = async (e) => {
-        e.preventDefault();
-        
-        const newErrors = validateForm();
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            return;
-        }
-
-        setFormLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const res = await API.put(`/salaries/edit/${selectedSalary._id}`, formData, {
-                headers: { Authorization: `Bearer ${token}` }
+            // Filter salaries based on selected period
+            let filteredSalaries = salaries.filter(salary => {
+                if (reportType === 'weekly') {
+                    // For weekly, we need to calculate week of month
+                    const salaryDate = new Date(salary.year, salary.month - 1, 1);
+                    const weekNumber = Math.ceil(salaryDate.getDate() / 7);
+                    return salary.year === selectedYear && 
+                           salary.month === selectedMonth &&
+                           weekNumber === selectedWeek;
+                } else if (reportType === 'monthly') {
+                    return salary.year === selectedYear && salary.month === selectedMonth;
+                } else if (reportType === 'yearly') {
+                    return salary.year === selectedYear;
+                } else if (reportType === 'custom' && dateRange.startDate && dateRange.endDate) {
+                    const salaryDate = new Date(salary.year, salary.month - 1);
+                    const start = new Date(dateRange.startDate);
+                    const end = new Date(dateRange.endDate);
+                    return salaryDate >= start && salaryDate <= end;
+                }
+                return false;
             });
 
-            alert(res.data.msg || "Salary updated successfully");
-            setIsEditModalOpen(false);
-            resetForm();
-            fetchSalaries();
-            fetchStats();
-        } catch (error) {
-            console.error("Error updating salary:", error);
-            alert(error.response?.data?.msg || "Failed to update salary");
-        } finally {
-            setFormLoading(false);
-        }
-    };
-
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this salary record? This action cannot be undone.')) {
-            try {
-                const token = localStorage.getItem('token');
-                const res = await API.delete(`/salaries/remove/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                alert(res.data.msg || "Salary deleted successfully");
-                fetchSalaries();
-                fetchStats();
-            } catch (error) {
-                console.error("Error deleting salary:", error);
-                alert(error.response?.data?.msg || "Failed to delete salary");
+            // Apply additional filters
+            let filteredEmployees = [...employees];
+            if (filters.department) {
+                filteredEmployees = filteredEmployees.filter(emp => 
+                    emp.departmentId === filters.department || emp.departmentId?._id === filters.department
+                );
             }
-        }
-    };
+            if (filters.status) {
+                filteredEmployees = filteredEmployees.filter(emp => emp.status === filters.status);
+            }
+            if (filters.employee) {
+                filteredEmployees = filteredEmployees.filter(emp => emp._id === filters.employee);
+            }
 
-    const handleStatusChange = async (id, newStatus) => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await API.put(`/salaries/edit/${id}`, 
-                { status: newStatus },
-                { headers: { Authorization: `Bearer ${token}` } }
+            // Filter salaries based on filtered employees
+            const employeeIds = filteredEmployees.map(emp => emp._id);
+            filteredSalaries = filteredSalaries.filter(salary => 
+                employeeIds.includes(salary.employeeId?._id || salary.employeeId)
             );
 
-            alert(`Salary marked as ${newStatus}`);
-            fetchSalaries();
-            fetchStats();
-            res.data
+            // Calculate summary statistics
+            const totalSalaries = filteredSalaries.reduce((sum, s) => sum + (s.NetSalary || 0), 0);
+            const paidSalaries = filteredSalaries.filter(s => s.status === 'paid')
+                .reduce((sum, s) => sum + (s.NetSalary || 0), 0);
+            const pendingSalaries = filteredSalaries.filter(s => s.status === 'pending')
+                .reduce((sum, s) => sum + (s.NetSalary || 0), 0);
+
+            // Department-wise breakdown
+            const departmentStats = departments.map(dept => {
+                const deptEmployees = filteredEmployees.filter(emp => 
+                    emp.departmentId === dept._id || emp.departmentId?._id === dept._id
+                );
+                const deptSalaries = filteredSalaries.filter(s => {
+                    const emp = employees.find(e => e._id === (s.employeeId?._id || s.employeeId));
+                    return emp && (emp.departmentId === dept._id || emp.departmentId?._id === dept._id);
+                });
+                const deptTotalSalary = deptSalaries.reduce((sum, s) => sum + (s.NetSalary || 0), 0);
+
+                return {
+                    name: dept.departmentName,
+                    code: dept.departmentCode,
+                    employees: deptEmployees.length,
+                    totalSalary: deptTotalSalary,
+                    averageSalary: deptEmployees.length > 0 ? deptTotalSalary / deptEmployees.length : 0
+                };
+            }).filter(dept => dept.employees > 0 || dept.totalSalary > 0);
+
+            // Monthly breakdown for yearly report
+            const monthlyBreakdown = months.map((month, index) => {
+                const monthSalaries = filteredSalaries.filter(s => s.month === index + 1);
+                const total = monthSalaries.reduce((sum, s) => sum + (s.NetSalary || 0), 0);
+                return {
+                    month,
+                    total,
+                    count: monthSalaries.length
+                };
+            });
+
+            // Employee list with salary info
+            const employeeList = filteredEmployees.map(emp => {
+                const empSalary = filteredSalaries.find(s => 
+                    (s.employeeId?._id || s.employeeId) === emp._id
+                );
+                const deptName = emp.departmentId?.departmentName || 
+                    departments.find(d => d._id === emp.departmentId)?.departmentName || 'N/A';
+                
+                return {
+                    id: emp._id,
+                    name: `${emp.FirstName || ''} ${emp.LastName || ''}`.trim(),
+                    employeeNumber: emp.employeeNumber,
+                    position: emp.Position,
+                    department: deptName,
+                    status: emp.status || 'active',
+                    salary: empSalary?.NetSalary || 0,
+                    grossSalary: empSalary?.GrossSalary || 0,
+                    deduction: empSalary?.TotalDeduction || 0,
+                    month: empSalary?.month,
+                    year: empSalary?.year,
+                    paymentMethod: empSalary?.paymentMethod,
+                    salaryStatus: empSalary?.status
+                };
+            }).filter(emp => emp.name);
+
+            // Salary transactions
+            const salaryTransactions = filteredSalaries.map(salary => {
+                const emp = employees.find(e => e._id === (salary.employeeId?._id || salary.employeeId));
+                return {
+                    id: salary._id,
+                    employeeName: emp ? `${emp.FirstName || ''} ${emp.LastName || ''}`.trim() : 'Unknown',
+                    employeeNumber: emp?.employeeNumber || 'N/A',
+                    department: emp?.departmentId?.departmentName || 
+                        departments.find(d => d._id === emp?.departmentId)?.departmentName || 'N/A',
+                    grossSalary: salary.GrossSalary || 0,
+                    deduction: salary.TotalDeduction || 0,
+                    netSalary: salary.NetSalary || 0,
+                    month: salary.month,
+                    year: salary.year,
+                    monthName: months[salary.month - 1],
+                    status: salary.status || 'pending',
+                    paymentMethod: salary.paymentMethod || 'bank transfer',
+                    paymentDate: salary.paymentDate ? new Date(salary.paymentDate).toLocaleDateString() : 'Not paid',
+                    notes: salary.notes || ''
+                };
+            });
+
+            setReportData({
+                summary: {
+                    totalEmployees: filteredEmployees.length,
+                    totalDepartments: departmentStats.length,
+                    totalSalaries: filteredSalaries.length,
+                    totalAmount: totalSalaries,
+                    paidAmount: paidSalaries,
+                    pendingAmount: pendingSalaries,
+                    averageSalary: filteredEmployees.length > 0 ? totalSalaries / filteredEmployees.length : 0,
+                    paidPercentage: totalSalaries > 0 ? (paidSalaries / totalSalaries) * 100 : 0,
+                    pendingPercentage: totalSalaries > 0 ? (pendingSalaries / totalSalaries) * 100 : 0
+                },
+                employees: employeeList,
+                salaries: salaryTransactions,
+                departmentStats,
+                monthlyBreakdown,
+                period: {
+                    type: reportType,
+                    month: selectedMonth,
+                    year: selectedYear,
+                    week: selectedWeek,
+                    dateRange,
+                    description: getPeriodDescription()
+                }
+            });
+
         } catch (error) {
-            console.error("Error updating status:", error);
-            alert(error.response?.data?.msg || "Failed to update status");
+            console.error("Error generating report:", error);
+            alert("Failed to generate report. Please try again.");
+        } finally {
+            setGenerating(false);
         }
     };
 
-    const openCreateModal = () => {
-        resetForm();
-        setIsCreateModalOpen(true);
+    const exportToPDF = () => {
+        setExporting(true);
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            
+            // Title
+            doc.setFontSize(20);
+            doc.setTextColor(33, 150, 243);
+            doc.text('Salary Report', pageWidth / 2, 20, { align: 'center' });
+            
+            // Period
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Period: ${reportData.period.description}`, 14, 30);
+            doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 37);
+            
+            // Summary
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Summary', 14, 50);
+            
+            doc.setFontSize(10);
+            doc.text(`Total Employees: ${reportData.summary.totalEmployees}`, 20, 60);
+            doc.text(`Total Departments: ${reportData.summary.totalDepartments}`, 20, 67);
+            doc.text(`Total Salaries: ${reportData.summary.totalSalaries}`, 20, 74);
+            doc.text(`Total Amount: $${reportData.summary.totalAmount.toLocaleString()}`, 20, 81);
+            doc.text(`Paid: $${reportData.summary.paidAmount.toLocaleString()} (${reportData.summary.paidPercentage.toFixed(1)}%)`, 20, 88);
+            doc.text(`Pending: $${reportData.summary.pendingAmount.toLocaleString()} (${reportData.summary.pendingPercentage.toFixed(1)}%)`, 20, 95);
+            
+            // Employee Table
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text('Employee Details', 14, 20);
+            
+            const employeeColumns = ['Name', 'Department', 'Position', 'Status', 'Salary'];
+            const employeeRows = reportData.employees.slice(0, 20).map(emp => [
+                emp.name,
+                emp.department,
+                emp.position,
+                emp.status,
+                `$${emp.salary.toLocaleString()}`
+            ]);
+            
+            doc.autoTable({
+                startY: 30,
+                head: [employeeColumns],
+                body: employeeRows,
+                theme: 'striped',
+                headStyles: { fillColor: [33, 150, 243] }
+            });
+            
+            // Salary Table
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text('Salary Transactions', 14, 20);
+            
+            const salaryColumns = ['Employee', 'Period', 'Gross', 'Deduction', 'Net', 'Status'];
+            const salaryRows = reportData.salaries.slice(0, 20).map(sal => [
+                sal.employeeName,
+                `${sal.monthName} ${sal.year}`,
+                `$${sal.grossSalary.toLocaleString()}`,
+                `$${sal.deduction.toLocaleString()}`,
+                `$${sal.netSalary.toLocaleString()}`,
+                sal.status
+            ]);
+            
+            doc.autoTable({
+                startY: 30,
+                head: [salaryColumns],
+                body: salaryRows,
+                theme: 'striped',
+                headStyles: { fillColor: [33, 150, 243] }
+            });
+            
+            // Department Statistics
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text('Department Statistics', 14, 20);
+            
+            const deptColumns = ['Department', 'Employees', 'Total Salary', 'Average'];
+            const deptRows = reportData.departmentStats.map(dept => [
+                dept.name,
+                dept.employees.toString(),
+                `$${dept.totalSalary.toLocaleString()}`,
+                `$${dept.averageSalary.toLocaleString()}`
+            ]);
+            
+            doc.autoTable({
+                startY: 30,
+                head: [deptColumns],
+                body: deptRows,
+                theme: 'striped',
+                headStyles: { fillColor: [33, 150, 243] }
+            });
+            
+            // Save PDF
+            doc.save(`salary-report-${reportData.period.description.replace(/[/\s]/g, '-')}.pdf`);
+            
+        } catch (error) {
+            console.error("Error exporting to PDF:", error);
+            alert("Failed to export to PDF. Please try again.");
+        } finally {
+            setExporting(false);
+        }
     };
 
-    const openEditModal = (salary) => {
-        setSelectedSalary(salary);
-        setFormData({
-            employeeId: salary.employeeId?._id || salary.employeeId,
-            GrossSalary: salary.GrossSalary,
-            TotalDeduction: salary.TotalDeduction,
-            month: salary.month,
-            year: salary.year,
-            paymentMethod: salary.paymentMethod || "bank transfer",
-            status: salary.status || "pending",
-            notes: salary.notes || ""
-        });
-        setIsEditModalOpen(true);
+    const exportToExcel = () => {
+        setExporting(true);
+        try {
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Summary sheet
+            const summaryData = [
+                ['Report Summary'],
+                ['Period', reportData.period.description],
+                ['Generated On', new Date().toLocaleString()],
+                [],
+                ['Metric', 'Value'],
+                ['Total Employees', reportData.summary.totalEmployees],
+                ['Total Departments', reportData.summary.totalDepartments],
+                ['Total Salary Records', reportData.summary.totalSalaries],
+                ['Total Amount', `$${reportData.summary.totalAmount.toLocaleString()}`],
+                ['Paid Amount', `$${reportData.summary.paidAmount.toLocaleString()}`],
+                ['Pending Amount', `$${reportData.summary.pendingAmount.toLocaleString()}`],
+                ['Average Salary', `$${reportData.summary.averageSalary.toLocaleString()}`],
+                ['Paid Percentage', `${reportData.summary.paidPercentage.toFixed(1)}%`],
+                ['Pending Percentage', `${reportData.summary.pendingPercentage.toFixed(1)}%`]
+            ];
+            
+            const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+            
+            // Employees sheet
+            if (reportData.employees.length > 0) {
+                const employeeWs = XLSX.utils.json_to_sheet(reportData.employees);
+                XLSX.utils.book_append_sheet(wb, employeeWs, 'Employees');
+            }
+            
+            // Salaries sheet
+            if (reportData.salaries.length > 0) {
+                const salaryWs = XLSX.utils.json_to_sheet(reportData.salaries);
+                XLSX.utils.book_append_sheet(wb, salaryWs, 'Salaries');
+            }
+            
+            // Departments sheet
+            if (reportData.departmentStats.length > 0) {
+                const deptWs = XLSX.utils.json_to_sheet(reportData.departmentStats);
+                XLSX.utils.book_append_sheet(wb, deptWs, 'Departments');
+            }
+            
+            // Save Excel file
+            XLSX.writeFile(wb, `salary-report-${reportData.period.description.replace(/[/\s]/g, '-')}.xlsx`);
+            
+        } catch (error) {
+            console.error("Error exporting to Excel:", error);
+            alert("Failed to export to Excel. Please try again.");
+        } finally {
+            setExporting(false);
+        }
     };
 
-    const openViewModal = (salary) => {
-        setSelectedSalary(salary);
-        setIsViewModalOpen(true);
+    const exportToCSV = () => {
+        setExporting(true);
+        try {
+            // Create CSV for each section
+            if (reportData.employees.length > 0) {
+                const employeeCsv = XLSX.utils.sheet_to_csv(XLSX.utils.json_to_sheet(reportData.employees));
+                downloadCSV(employeeCsv, `employees-${reportData.period.description.replace(/[/\s]/g, '-')}.csv`);
+            }
+            
+            if (reportData.salaries.length > 0) {
+                const salaryCsv = XLSX.utils.sheet_to_csv(XLSX.utils.json_to_sheet(reportData.salaries));
+                downloadCSV(salaryCsv, `salaries-${reportData.period.description.replace(/[/\s]/g, '-')}.csv`);
+            }
+            
+            if (reportData.departmentStats.length > 0) {
+                const deptCsv = XLSX.utils.sheet_to_csv(XLSX.utils.json_to_sheet(reportData.departmentStats));
+                downloadCSV(deptCsv, `departments-${reportData.period.description.replace(/[/\s]/g, '-')}.csv`);
+            }
+            
+        } catch (error) {
+            console.error("Error exporting to CSV:", error);
+            alert("Failed to export to CSV. Please try again.");
+        } finally {
+            setExporting(false);
+        }
     };
 
-    const resetForm = () => {
-        setFormData({
-            employeeId: "",
-            GrossSalary: "",
-            TotalDeduction: "",
-            month: "",
-            year: new Date().getFullYear(),
-            paymentMethod: "bank transfer",
-            status: "pending",
-            notes: ""
-        });
-        setErrors({});
-        setSelectedSalary(null);
+    const downloadCSV = (csv, filename) => {
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
     };
 
-    const closeModal = () => {
-        setIsCreateModalOpen(false);
-        setIsEditModalOpen(false);
-        setIsViewModalOpen(false);
-        resetForm();
+    const printReport = () => {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Salary Report - ${reportData.period.description}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1 { color: #2196F3; }
+                        h2 { color: #333; margin-top: 20px; }
+                        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+                        th { background-color: #2196F3; color: white; padding: 10px; text-align: left; }
+                        td { border: 1px solid #ddd; padding: 8px; }
+                        tr:nth-child(even) { background-color: #f2f2f2; }
+                        .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
+                        .summary-card { background-color: #f5f5f5; padding: 15px; border-radius: 5px; }
+                        .summary-card h3 { margin: 0; color: #666; }
+                        .summary-card p { margin: 5px 0 0; font-size: 20px; font-weight: bold; color: #2196F3; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Salary Report</h1>
+                    <p><strong>Period:</strong> ${reportData.period.description}</p>
+                    <p><strong>Generated on:</strong> ${new Date().toLocaleString()}</p>
+                    
+                    <div class="summary">
+                        <div class="summary-card">
+                            <h3>Total Employees</h3>
+                            <p>${reportData.summary.totalEmployees}</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Total Amount</h3>
+                            <p>$${reportData.summary.totalAmount.toLocaleString()}</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Paid</h3>
+                            <p>$${reportData.summary.paidAmount.toLocaleString()}</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Pending</h3>
+                            <p>$${reportData.summary.pendingAmount.toLocaleString()}</p>
+                        </div>
+                    </div>
+                    
+                    <h2>Employee Details</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Position</th>
+                                <th>Status</th>
+                                <th>Salary</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reportData.employees.map(emp => `
+                                <tr>
+                                    <td>${emp.name}</td>
+                                    <td>${emp.department}</td>
+                                    <td>${emp.position}</td>
+                                    <td>${emp.status}</td>
+                                    <td>$${emp.salary.toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <h2>Salary Transactions</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Period</th>
+                                <th>Gross</th>
+                                <th>Deduction</th>
+                                <th>Net</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reportData.salaries.map(sal => `
+                                <tr>
+                                    <td>${sal.employeeName}</td>
+                                    <td>${sal.monthName} ${sal.year}</td>
+                                    <td>$${sal.grossSalary.toLocaleString()}</td>
+                                    <td>$${sal.deduction.toLocaleString()}</td>
+                                    <td>$${sal.netSalary.toLocaleString()}</td>
+                                    <td>${sal.status}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
     };
 
-    const clearFilters = () => {
-        setSearchTerm("");
-        setSelectedMonth("");
-        setSelectedYear("");
-        setSelectedStatus("");
+    const handleExport = () => {
+        if (!reportData) {
+            alert("Please generate a report first.");
+            return;
+        }
+        
+        switch(exportFormat) {
+            case 'pdf':
+                exportToPDF();
+                break;
+            case 'excel':
+                exportToExcel();
+                break;
+            case 'csv':
+                exportToCSV();
+                break;
+            default:
+                exportToPDF();
+        }
     };
 
     // Format currency
@@ -440,163 +607,109 @@ function Salaries() {
         }).format(amount || 0);
     };
 
-    // Available years (last 5 years)
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+    // Format number with commas
+    const formatNumber = (num) => {
+        return new Intl.NumberFormat('en-US').format(num || 0);
+    };
+
+    // Get period description
+    const getPeriodDescription = () => {
+        if (reportType === 'weekly') {
+            return `Week ${selectedWeek} of ${months[selectedMonth - 1]} ${selectedYear}`;
+        } else if (reportType === 'monthly') {
+            return `${months[selectedMonth - 1]} ${selectedYear}`;
+        } else if (reportType === 'yearly') {
+            return `Year ${selectedYear}`;
+        } else if (reportType === 'custom') {
+            return `${dateRange.startDate} to ${dateRange.endDate}`;
+        }
+        return '';
+    };
+
+    // Get month name
+    const getMonthName = (monthNumber) => {
+        return months[monthNumber - 1] || "Unknown";
+    };
+    getMonthName();
 
     return (
-        <div className="bg-linear-to-br from-blue-900 to-blue-800 min-h-screen">
+        <div className="bg-linear-to-br from-indigo-900 via-blue-900 to-purple-900 min-h-screen">
             <SideBar />
-
+            
             {/* Main Content */}
             <div className="ml-80 p-8">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-2">
-                        <FaMoneyBillWave className="text-green-300" />
-                        Salary Management
+                <div className="mb-8 animate-fadeIn">
+                    <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                        <FaFileAlt className="text-green-400 animate-pulse" />
+                        Reports & Analytics
                     </h1>
-                    <p className="text-blue-200">
-                        Manage employee salaries, track payments, and generate reports
+                    <p className="text-blue-200 text-lg">
+                        Generate comprehensive reports and analyze your organization's performance
                     </p>
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-200 text-xs uppercase">Total Salaries</p>
-                                <p className="text-2xl font-bold text-white">
-                                    {statsLoading ? (
-                                        <span className="inline-block w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                    ) : (
-                                        stats.totalSalaries
-                                    )}
-                                </p>
-                            </div>
-                            <div className="bg-blue-500/20 p-3 rounded-lg">
-                                <FaMoneyBillWave className="text-xl text-blue-300" />
-                            </div>
+                {/* Report Configuration Card */}
+                <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 mb-8 border border-white/20 shadow-2xl">
+                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                        <div className="p-3 bg-linear-to-r from-blue-500 to-purple-600 rounded-xl">
+                            <FaFilter className="text-white" />
                         </div>
-                    </div>
+                        Report Configuration
+                    </h2>
 
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-200 text-xs uppercase">Total Amount</p>
-                                <p className="text-lg font-bold text-white truncate max-w-[120px]">
-                                    {formatCurrency(stats.totalAmount)}
-                                </p>
-                            </div>
-                            <div className="bg-green-500/20 p-3 rounded-lg">
-                                <FaMoneyBillWave className="text-xl text-green-300" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-200 text-xs uppercase">Paid</p>
-                                <p className="text-lg font-bold text-white">{formatCurrency(stats.totalPaid)}</p>
-                            </div>
-                            <div className="bg-green-500/20 p-3 rounded-lg">
-                                <FaCheckCircle className="text-xl text-green-300" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-200 text-xs uppercase">Pending</p>
-                                <p className="text-lg font-bold text-white">{formatCurrency(stats.totalPending)}</p>
-                            </div>
-                            <div className="bg-yellow-500/20 p-3 rounded-lg">
-                                <FaClock className="text-xl text-yellow-300" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-200 text-xs uppercase">Average</p>
-                                <p className="text-lg font-bold text-white">{formatCurrency(stats.averageSalary)}</p>
-                            </div>
-                            <div className="bg-purple-500/20 p-3 rounded-lg">
-                                <FaChartPie className="text-xl text-purple-300" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Actions Bar */}
-                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/10">
-                    <div className="flex flex-col gap-4">
-                        {/* Top Row */}
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="relative w-full md:w-96">
-                                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-300" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by employee name, position..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-white/20 border border-blue-300/30 rounded-lg text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-3 w-full md:w-auto">
-                                <button
-                                    onClick={clearFilters}
-                                    className="p-3 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-all duration-200"
-                                    title="Clear filters"
-                                >
-                                    <FaSync className="text-sm" />
-                                </button>
-
-                                <button
-                                    onClick={openCreateModal}
-                                    className="bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-300 transform hover:scale-105"
-                                >
-                                    <FaFileUpload />
-                                    Add Salary
-                                </button>
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                        {/* Report Type */}
+                        <div>
+                            <label className="block text-sm font-medium text-blue-200 mb-2">
+                                <FaRegClock className="inline mr-2" />
+                                Report Type
+                            </label>
+                            <select
+                                value={reportType}
+                                onChange={(e) => setReportType(e.target.value)}
+                                className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500 transition-all duration-300"
+                            >
+                                <option value="weekly" className="text-gray-800">📊 Weekly Report</option>
+                                <option value="monthly" className="text-gray-800">📅 Monthly Report</option>
+                                <option value="yearly" className="text-gray-800">📈 Yearly Report</option>
+                                <option value="custom" className="text-gray-800">⚡ Custom Range</option>
+                            </select>
                         </div>
 
-                        {/* Filter Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-white/20">
+                        {/* Month Selection */}
+                        {(reportType === 'weekly' || reportType === 'monthly') && (
                             <div>
                                 <label className="block text-sm font-medium text-blue-200 mb-2">
+                                    <FaRegCalendarAlt className="inline mr-2" />
                                     Month
                                 </label>
                                 <select
                                     value={selectedMonth}
-                                    onChange={(e) => setSelectedMonth(e.target.value)}
-                                    className="w-full px-4 py-2 bg-white/20 border border-blue-300/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                                    className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
                                 >
-                                    <option value="" className="text-gray-800">All Months</option>
-                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                        <option key={month} value={month} className="text-gray-800">
-                                            {getMonthName(month)}
+                                    {months.map((month, index) => (
+                                        <option key={index + 1} value={index + 1} className="text-gray-800">
+                                            {month}
                                         </option>
                                     ))}
                                 </select>
                             </div>
+                        )}
 
+                        {/* Year Selection */}
+                        {(reportType === 'weekly' || reportType === 'monthly' || reportType === 'yearly') && (
                             <div>
                                 <label className="block text-sm font-medium text-blue-200 mb-2">
+                                    <FaRegCalendarAlt className="inline mr-2" />
                                     Year
                                 </label>
                                 <select
                                     value={selectedYear}
-                                    onChange={(e) => setSelectedYear(e.target.value)}
-                                    className="w-full px-4 py-2 bg-white/20 border border-blue-300/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                                    className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
                                 >
-                                    <option value="" className="text-gray-800">All Years</option>
                                     {years.map(year => (
                                         <option key={year} value={year} className="text-gray-800">
                                             {year}
@@ -604,700 +717,396 @@ function Salaries() {
                                     ))}
                                 </select>
                             </div>
+                        )}
+
+                        {/* Week Selection */}
+                        {reportType === 'weekly' && (
+                            <div>
+                                <label className="block text-sm font-medium text-blue-200 mb-2">
+                                    <FaRegClock className="inline mr-2" />
+                                    Week
+                                </label>
+                                <select
+                                    value={selectedWeek}
+                                    onChange={(e) => setSelectedWeek(parseInt(e.target.value))}
+                                    className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
+                                >
+                                    {[1, 2, 3, 4].map(week => (
+                                        <option key={week} value={week} className="text-gray-800">
+                                            Week {week}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Custom Date Range */}
+                        {reportType === 'custom' && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-200 mb-2">
+                                        <FaRegCalendarAlt className="inline mr-2" />
+                                        Start Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={dateRange.startDate}
+                                        onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
+                                        className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-200 mb-2">
+                                        <FaRegCalendarAlt className="inline mr-2" />
+                                        End Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={dateRange.endDate}
+                                        onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
+                                        className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Advanced Filters Toggle */}
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="flex items-center gap-2 text-blue-200 hover:text-white transition-all duration-300 mb-4 group"
+                    >
+                        <div className={`p-2 rounded-lg transition-all duration-300 ${showFilters ? 'bg-green-500' : 'bg-blue-500/50 group-hover:bg-blue-500'}`}>
+                            <FaFilter />
+                        </div>
+                        {showFilters ? 'Hide' : 'Show'} Advanced Filters
+                    </button>
+
+                    {/* Advanced Filters */}
+                    {showFilters && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 p-6 bg-linear-to-r from-white/5 to-white/10 rounded-2xl border border-white/10">
+                            <div>
+                                <label className="block text-sm font-medium text-blue-200 mb-2">
+                                    <FaRegBuilding className="inline mr-2" />
+                                    Department
+                                </label>
+                                <select
+                                    value={filters.department}
+                                    onChange={(e) => setFilters({...filters, department: e.target.value})}
+                                    className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
+                                >
+                                    <option value="" className="text-gray-800">All Departments</option>
+                                    {departments.map(dept => (
+                                        <option key={dept._id} value={dept._id} className="text-gray-800">
+                                            {dept.departmentName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-blue-200 mb-2">
-                                    Status
+                                    <FaRegUser className="inline mr-2" />
+                                    Employee Status
                                 </label>
                                 <select
-                                    value={selectedStatus}
-                                    onChange={(e) => setSelectedStatus(e.target.value)}
-                                    className="w-full px-4 py-2 bg-white/20 border border-blue-300/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    value={filters.status}
+                                    onChange={(e) => setFilters({...filters, status: e.target.value})}
+                                    className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
                                 >
                                     <option value="" className="text-gray-800">All Status</option>
-                                    <option value="paid" className="text-gray-800">Paid</option>
-                                    <option value="pending" className="text-gray-800">Pending</option>
-                                    <option value="cancelled" className="text-gray-800">Cancelled</option>
+                                    <option value="active" className="text-gray-800">Active</option>
+                                    <option value="inactive" className="text-gray-800">Inactive</option>
+                                    <option value="on leave" className="text-gray-800">On Leave</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-blue-200 mb-2">
+                                    <FaUserTie className="inline mr-2" />
+                                    Specific Employee
+                                </label>
+                                <select
+                                    value={filters.employee}
+                                    onChange={(e) => setFilters({...filters, employee: e.target.value})}
+                                    className="w-full px-5 py-3 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
+                                >
+                                    <option value="" className="text-gray-800">All Employees</option>
+                                    {employees.map(emp => (
+                                        <option key={emp._id} value={emp._id} className="text-gray-800">
+                                            {emp.FirstName} {emp.LastName}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-4 mt-8">
+                        <button
+                            onClick={generateReport}
+                            disabled={generating}
+                            className="group relative overflow-hidden bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-4 rounded-xl font-semibold flex items-center gap-3 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl disabled:opacity-50"
+                        >
+                            {generating ? (
+                                <>
+                                    <FaSpinner className="animate-spin text-xl" />
+                                    Generating Report...
+                                </>
+                            ) : (
+                                <>
+                                    <FaEye className="text-xl" />
+                                    Generate Report
+                                </>
+                            )}
+                        </button>
+
+                        {reportData && (
+                            <>
+                                <button
+                                    onClick={handleExport}
+                                    disabled={exporting}
+                                    className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-4 rounded-xl font-semibold flex items-center gap-2 transition-all duration-300 hover:scale-105 disabled:opacity-50"
+                                >
+                                    {exporting ? (
+                                        <FaSpinner className="animate-spin" />
+                                    ) : (
+                                        <FaDownload />
+                                    )}
+                                    Export
+                                </button>
+                                <select
+                                    value={exportFormat}
+                                    onChange={(e) => setExportFormat(e.target.value)}
+                                    className="px-4 py-4 bg-white/10 border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-green-500"
+                                >
+                                    <option value="pdf" className="text-gray-800">📄 PDF Document</option>
+                                    <option value="excel" className="text-gray-800">📊 Excel Spreadsheet</option>
+                                    <option value="csv" className="text-gray-800">📈 CSV File</option>
+                                </select>
+                                <button
+                                    onClick={printReport}
+                                    className="bg-linear-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-4 rounded-xl font-semibold flex items-center gap-2 transition-all duration-300 hover:scale-105"
+                                >
+                                    <FaPrint />
+                                    Print
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
-                {/* Results count */}
-                <div className="mb-4 text-blue-200">
-                    Showing {filteredSalaries.length} of {salaries.length} salary records
-                </div>
+                {/* Report Results */}
+                {reportData && (
+                    <div className="space-y-8 animate-fadeInUp">
+                        {/* Report Header */}
+                        <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                <div>
+                                    <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                                        <FaFileInvoice className="text-green-400" />
+                                        {reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report
+                                    </h2>
+                                    <p className="text-blue-200 text-lg flex items-center gap-2">
+                                        <FaRegCalendarAlt />
+                                        {reportData.period.description}
+                                    </p>
+                                </div>
+                                <div className="text-right bg-white/5 p-4 rounded-2xl">
+                                    <p className="text-sm text-blue-200">Generated on</p>
+                                    <p className="font-semibold text-white text-lg">{new Date().toLocaleDateString()}</p>
+                                </div>
+                            </div>
 
-                {/* Salaries Table */}
-                <div className="bg-white rounded-xl shadow-xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-linear-to-r from-blue-600 to-blue-700">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white">Employee</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white">Department</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white">Gross Salary</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white">Deduction</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white">Net Salary</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white">Period</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white">Status</th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-white">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                                <span>Loading salaries...</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : filteredSalaries.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
-                                            <div className="flex flex-col items-center">
-                                                <FaMoneyBillWave className="text-5xl text-gray-300 mb-4" />
-                                                <p className="text-lg font-medium text-gray-600 mb-2">
-                                                    {searchTerm || selectedMonth || selectedYear || selectedStatus
-                                                        ? "No salaries match your filters"
-                                                        : "No salary records found"}
-                                                </p>
-                                                <p className="text-sm text-gray-500 mb-4">
-                                                    {searchTerm || selectedMonth || selectedYear || selectedStatus
-                                                        ? "Try adjusting your filters"
-                                                        : "Get started by adding your first salary record"}
-                                                </p>
-                                                {(searchTerm || selectedMonth || selectedYear || selectedStatus) && (
-                                                    <button
-                                                        onClick={clearFilters}
-                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                                    >
-                                                        Clear Filters
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredSalaries.map((salary) => {
-                                        const employeeName = salary.employeeId 
-                                            ? `${salary.employeeId.FirstName || ''} ${salary.employeeId.LastName || ''}`
-                                            : getEmployeeName(salary.employeeId);
-                                        
-                                        const departmentName = salary.employeeId?.departmentId?.departmentName || 
-                                            getDepartmentName(salary.employeeId);
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="group bg-linear-to-br from-blue-500 to-blue-600 rounded-2xl p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <FaUsers className="text-4xl text-white/80 group-hover:scale-110 transition-transform" />
+                                    </div>
+                                    <p className="text-white/80 text-sm">Total Employees</p>
+                                    <p className="text-4xl font-bold text-white">{formatNumber(reportData.summary.totalEmployees)}</p>
+                                </div>
 
-                                        return (
-                                            <tr 
-                                                key={salary._id} 
-                                                className="hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
-                                                onClick={() => openViewModal(salary)}
-                                            >
+                                <div className="group bg-linear-to-br from-green-500 to-emerald-600 rounded-2xl p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <FaMoneyBillWave className="text-4xl text-white/80 group-hover:scale-110 transition-transform" />
+                                    </div>
+                                    <p className="text-white/80 text-sm">Total Payroll</p>
+                                    <p className="text-3xl font-bold text-white">{formatCurrency(reportData.summary.totalAmount)}</p>
+                                </div>
+
+                                <div className="group bg-linear-to-br from-yellow-500 to-orange-600 rounded-2xl p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <FaCheckCircle className="text-4xl text-white/80 group-hover:scale-110 transition-transform" />
+                                    </div>
+                                    <p className="text-white/80 text-sm">Paid Amount</p>
+                                    <p className="text-2xl font-bold text-white">{formatCurrency(reportData.summary.paidAmount)}</p>
+                                    <p className="text-sm text-white/80 mt-2">{reportData.summary.paidPercentage.toFixed(1)}% of total</p>
+                                </div>
+
+                                <div className="group bg-linear-to-br from-purple-500 to-pink-600 rounded-2xl p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <FaClock className="text-4xl text-white/80 group-hover:scale-110 transition-transform" />
+                                    </div>
+                                    <p className="text-white/80 text-sm">Pending Amount</p>
+                                    <p className="text-2xl font-bold text-white">{formatCurrency(reportData.summary.pendingAmount)}</p>
+                                    <p className="text-sm text-white/80 mt-2">{reportData.summary.pendingPercentage.toFixed(1)}% of total</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Employee List */}
+                        <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20">
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                                <FaUsers className="text-green-400" />
+                                Employee Details
+                            </h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-white/5 rounded-xl">
+                                        <tr>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Employee</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Department</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Position</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Status</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Salary</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/10">
+                                        {reportData.employees.slice(0, 10).map((emp, index) => (
+                                            <tr key={index} className="hover:bg-white/5 transition-all duration-300">
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center">
+                                                    <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 rounded-full bg-linear-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                                                            {salary.employeeId?.FirstName?.charAt(0) || 'E'}
-                                                            {salary.employeeId?.LastName?.charAt(0) || ''}
+                                                            {emp.name?.charAt(0) || 'E'}
                                                         </div>
-                                                        <div className="ml-3">
-                                                            <div className="text-sm font-medium text-gray-900">
-                                                                {employeeName}
-                                                            </div>
-                                                            <div className="text-xs text-gray-500">
-                                                                {salary.employeeId?.Position || 'N/A'}
-                                                            </div>
+                                                        <div>
+                                                            <p className="font-medium text-white">{emp.name}</p>
+                                                            <p className="text-sm text-blue-200">{emp.employeeNumber}</p>
                                                         </div>
                                                     </div>
                                                 </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-blue-200">{emp.department}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-white">{emp.position}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
-                                                        {departmentName}
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                                        emp.status === 'active' 
+                                                            ? 'bg-green-500/20 text-green-400 border border-green-500/50'
+                                                            : emp.status === 'on leave'
+                                                            ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                                            : 'bg-red-500/20 text-red-400 border border-red-500/50'
+                                                    }`}>
+                                                        {emp.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                                    {formatCurrency(salary.GrossSalary)}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                                    {formatCurrency(salary.TotalDeduction)}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="font-semibold text-green-600">
-                                                        {formatCurrency(salary.NetSalary)}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                                    {getMonthName(salary.month)} {salary.year}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${getStatusBadge(salary.status)}`}>
-                                                        {getStatusIcon(salary.status)}
-                                                        {salary.status?.charAt(0).toUpperCase() + salary.status?.slice(1) || 'Pending'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            openEditModal(salary);
-                                                        }}
-                                                        className="inline-flex items-center px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium mr-2 transition-all duration-200 transform hover:scale-105"
-                                                    >
-                                                        <FaEdit className="mr-1" />
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDelete(salary._id);
-                                                        }}
-                                                        className="inline-flex items-center px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105"
-                                                    >
-                                                        <FaTrash className="mr-1" />
-                                                        Delete
-                                                    </button>
+                                                <td className="px-6 py-4 whitespace-nowrap font-semibold text-green-400">
+                                                    {formatCurrency(emp.salary)}
                                                 </td>
                                             </tr>
-                                        );
-                                    })
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {reportData.employees.length > 10 && (
+                                    <p className="text-center text-blue-200 mt-4">
+                                        Showing 10 of {reportData.employees.length} employees
+                                    </p>
                                 )}
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
+
+                        {/* Salary Transactions */}
+                        <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20">
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                                <FaMoneyBillWave className="text-yellow-400" />
+                                Salary Transactions
+                            </h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-white/5 rounded-xl">
+                                        <tr>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Employee</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Period</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Gross</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Deduction</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Net</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/10">
+                                        {reportData.salaries.slice(0, 10).map((sal, index) => (
+                                            <tr key={index} className="hover:bg-white/5 transition-all duration-300">
+                                                <td className="px-6 py-4 whitespace-nowrap text-white">{sal.employeeName}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-blue-200">
+                                                    {sal.monthName} {sal.year}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-white">
+                                                    {formatCurrency(sal.grossSalary)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-red-400">
+                                                    -{formatCurrency(sal.deduction)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap font-semibold text-green-400">
+                                                    {formatCurrency(sal.netSalary)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 w-fit ${
+                                                        sal.status === 'paid' 
+                                                            ? 'bg-green-500/20 text-green-400'
+                                                            : sal.status === 'pending'
+                                                            ? 'bg-yellow-500/20 text-yellow-400'
+                                                            : 'bg-red-500/20 text-red-400'
+                                                    }`}>
+                                                        {sal.status === 'paid' && <FaCheckCircle />}
+                                                        {sal.status === 'pending' && <FaClock />}
+                                                        {sal.status === 'cancelled' && <FaTimes />}
+                                                        {sal.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {reportData.salaries.length > 10 && (
+                                    <p className="text-center text-blue-200 mt-4">
+                                        Showing 10 of {reportData.salaries.length} transactions
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* Create Salary Modal */}
-            {isCreateModalOpen && (
-                <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        {/* Modal Header */}
-                        <div className="sticky top-0 bg-linear-to-r from-blue-600 to-blue-700 p-6 rounded-t-2xl">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                    <FaFileUpload className="text-2xl" />
-                                    Add New Salary
-                                </h2>
-                                <button
-                                    onClick={closeModal}
-                                    className="text-white hover:bg-white/20 p-2 rounded-lg transition-all duration-200"
-                                >
-                                    <FaTimes className="text-xl" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Modal Body */}
-                        <form onSubmit={handleCreate} className="p-6">
-                            <div className="space-y-4">
-                                {/* Employee Selection */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Employee <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        name="employeeId"
-                                        value={formData.employeeId}
-                                        onChange={handleChange}
-                                        className={`w-full px-4 py-3 border ${errors.employeeId ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                                    >
-                                        <option value="">Select Employee</option>
-                                        {employees.map(emp => (
-                                            <option key={emp._id} value={emp._id}>
-                                                {emp.FirstName} {emp.LastName} - {emp.Position} ({emp.employeeNumber})
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {errors.employeeId && (
-                                        <p className="mt-1 text-sm text-red-500">{errors.employeeId}</p>
-                                    )}
-                                </div>
-
-                                {/* Gross Salary */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Gross Salary ($) <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="GrossSalary"
-                                        value={formData.GrossSalary}
-                                        onChange={handleChange}
-                                        className={`w-full px-4 py-3 border ${errors.GrossSalary ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                                        placeholder="5000"
-                                        min="0"
-                                        step="100"
-                                    />
-                                    {errors.GrossSalary && (
-                                        <p className="mt-1 text-sm text-red-500">{errors.GrossSalary}</p>
-                                    )}
-                                </div>
-
-                                {/* Total Deduction */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Total Deduction ($)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="TotalDeduction"
-                                        value={formData.TotalDeduction}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="0"
-                                        min="0"
-                                        step="100"
-                                    />
-                                </div>
-
-                                {/* Net Salary (Auto-calculated) */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Net Salary ($)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="NetSalary"
-                                        value={formData.GrossSalary - (formData.TotalDeduction || 0)}
-                                        disabled
-                                        className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
-                                    />
-                                </div>
-
-                                {/* Month and Year */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Month <span className="text-red-500">*</span>
-                                        </label>
-                                        <select
-                                            name="month"
-                                            value={formData.month}
-                                            onChange={handleChange}
-                                            className={`w-full px-4 py-3 border ${errors.month ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                                        >
-                                            <option value="">Select Month</option>
-                                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                                <option key={month} value={month}>
-                                                    {getMonthName(month)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.month && (
-                                            <p className="mt-1 text-sm text-red-500">{errors.month}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Year <span className="text-red-500">*</span>
-                                        </label>
-                                        <select
-                                            name="year"
-                                            value={formData.year}
-                                            onChange={handleChange}
-                                            className={`w-full px-4 py-3 border ${errors.year ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                                        >
-                                            <option value="">Select Year</option>
-                                            {years.map(year => (
-                                                <option key={year} value={year}>
-                                                    {year}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.year && (
-                                            <p className="mt-1 text-sm text-red-500">{errors.year}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Payment Method */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Payment Method
-                                    </label>
-                                    <select
-                                        name="paymentMethod"
-                                        value={formData.paymentMethod}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="bank transfer">Bank Transfer</option>
-                                        <option value="cash">Cash</option>
-                                        <option value="check">Check</option>
-                                    </select>
-                                </div>
-
-                                {/* Notes */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Notes
-                                    </label>
-                                    <textarea
-                                        name="notes"
-                                        value={formData.notes}
-                                        onChange={handleChange}
-                                        rows="3"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Additional notes..."
-                                    ></textarea>
-                                </div>
-                            </div>
-
-                            {/* Modal Footer */}
-                            <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
-                                <button
-                                    type="button"
-                                    onClick={closeModal}
-                                    className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={formLoading}
-                                    className="px-6 py-3 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold flex items-center gap-2 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {formLoading ? (
-                                        <>
-                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            Creating...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FaSave />
-                                            Create Salary
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Edit Salary Modal */}
-            {isEditModalOpen && (
-                <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        {/* Modal Header */}
-                        <div className="sticky top-0 bg-linear-to-r from-green-600 to-green-700 p-6 rounded-t-2xl">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                    <FaEdit className="text-2xl" />
-                                    Edit Salary
-                                </h2>
-                                <button
-                                    onClick={closeModal}
-                                    className="text-white hover:bg-white/20 p-2 rounded-lg transition-all duration-200"
-                                >
-                                    <FaTimes className="text-xl" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Modal Body */}
-                        <form onSubmit={handleEdit} className="p-6">
-                            <div className="space-y-4">
-                                {/* Employee (Read-only in edit) */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Employee
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={selectedSalary ? getEmployeeName(selectedSalary.employeeId) : ''}
-                                        disabled
-                                        className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
-                                    />
-                                </div>
-
-                                {/* Gross Salary */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Gross Salary ($) <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="GrossSalary"
-                                        value={formData.GrossSalary}
-                                        onChange={handleChange}
-                                        className={`w-full px-4 py-3 border ${errors.GrossSalary ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500`}
-                                        min="0"
-                                        step="100"
-                                    />
-                                    {errors.GrossSalary && (
-                                        <p className="mt-1 text-sm text-red-500">{errors.GrossSalary}</p>
-                                    )}
-                                </div>
-
-                                {/* Total Deduction */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Total Deduction ($)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="TotalDeduction"
-                                        value={formData.TotalDeduction}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                                        min="0"
-                                        step="100"
-                                    />
-                                </div>
-
-                                {/* Net Salary */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Net Salary ($)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formData.GrossSalary - (formData.TotalDeduction || 0)}
-                                        disabled
-                                        className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
-                                    />
-                                </div>
-
-                                {/* Status */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Status
-                                    </label>
-                                    <select
-                                        name="status"
-                                        value={formData.status}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    >
-                                        <option value="pending">Pending</option>
-                                        <option value="paid">Paid</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
-                                </div>
-
-                                {/* Payment Method */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Payment Method
-                                    </label>
-                                    <select
-                                        name="paymentMethod"
-                                        value={formData.paymentMethod}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    >
-                                        <option value="bank transfer">Bank Transfer</option>
-                                        <option value="cash">Cash</option>
-                                        <option value="check">Check</option>
-                                    </select>
-                                </div>
-
-                                {/* Notes */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Notes
-                                    </label>
-                                    <textarea
-                                        name="notes"
-                                        value={formData.notes}
-                                        onChange={handleChange}
-                                        rows="3"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                                        placeholder="Additional notes..."
-                                    ></textarea>
-                                </div>
-                            </div>
-
-                            {/* Modal Footer */}
-                            <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
-                                <button
-                                    type="button"
-                                    onClick={closeModal}
-                                    className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={formLoading}
-                                    className="px-6 py-3 bg-linear-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-semibold flex items-center gap-2 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {formLoading ? (
-                                        <>
-                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FaSave />
-                                            Save Changes
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* View Salary Modal */}
-            {isViewModalOpen && selectedSalary && (
-                <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl">
-                        {/* Modal Header */}
-                        <div className="bg-linear-to-r from-purple-600 to-purple-700 p-6 rounded-t-2xl">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                    <FaMoneyBillWave className="text-2xl" />
-                                    Salary Details
-                                </h2>
-                                <button
-                                    onClick={closeModal}
-                                    className="text-white hover:bg-white/20 p-2 rounded-lg transition-all duration-200"
-                                >
-                                    <FaTimes className="text-xl" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Modal Body */}
-                        <div className="p-6">
-                            <div className="flex items-center mb-6">
-                                <div className="h-16 w-16 rounded-full bg-linear-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
-                                    {selectedSalary.employeeId?.FirstName?.charAt(0) || 'E'}
-                                    {selectedSalary.employeeId?.LastName?.charAt(0) || ''}
-                                </div>
-                                <div className="ml-4">
-                                    <h3 className="text-xl font-bold text-gray-900">
-                                        {selectedSalary.employeeId 
-                                            ? `${selectedSalary.employeeId.FirstName} ${selectedSalary.employeeId.LastName}`
-                                            : getEmployeeName(selectedSalary.employeeId)}
-                                    </h3>
-                                    <p className="text-gray-600">
-                                        {selectedSalary.employeeId?.Position || 'N/A'} • 
-                                        Employee #{selectedSalary.employeeId?.employeeNumber || 'N/A'}
-                                    </p>
-                                    <span className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(selectedSalary.status)}`}>
-                                        {getStatusIcon(selectedSalary.status)}
-                                        {selectedSalary.status?.charAt(0).toUpperCase() + selectedSalary.status?.slice(1) || 'Pending'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <p className="text-sm text-gray-500">Department</p>
-                                    <p className="text-lg font-semibold text-gray-900">
-                                        {selectedSalary.employeeId?.departmentId?.departmentName || 
-                                         getDepartmentName(selectedSalary.employeeId)}
-                                    </p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <p className="text-sm text-gray-500">Period</p>
-                                    <p className="text-lg font-semibold text-gray-900">
-                                        {getMonthName(selectedSalary.month)} {selectedSalary.year}
-                                    </p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <p className="text-sm text-gray-500">Gross Salary</p>
-                                    <p className="text-lg font-semibold text-gray-900">
-                                        {formatCurrency(selectedSalary.GrossSalary)}
-                                    </p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <p className="text-sm text-gray-500">Total Deduction</p>
-                                    <p className="text-lg font-semibold text-red-600">
-                                        -{formatCurrency(selectedSalary.TotalDeduction)}
-                                    </p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg col-span-2">
-                                    <p className="text-sm text-gray-500">Net Salary</p>
-                                    <p className="text-2xl font-bold text-green-600">
-                                        {formatCurrency(selectedSalary.NetSalary)}
-                                    </p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <p className="text-sm text-gray-500">Payment Method</p>
-                                    <p className="text-lg font-semibold text-gray-900 capitalize">
-                                        {selectedSalary.paymentMethod || 'Bank Transfer'}
-                                    </p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <p className="text-sm text-gray-500">Payment Date</p>
-                                    <p className="text-lg font-semibold text-gray-900">
-                                        {selectedSalary.paymentDate 
-                                            ? new Date(selectedSalary.paymentDate).toLocaleDateString() 
-                                            : 'Not paid yet'}
-                                    </p>
-                                </div>
-
-                                {selectedSalary.notes && (
-                                    <div className="bg-gray-50 p-4 rounded-lg col-span-2">
-                                        <p className="text-sm text-gray-500">Notes</p>
-                                        <p className="text-gray-900">{selectedSalary.notes}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Status Actions */}
-                            {selectedSalary.status === 'pending' && (
-                                <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
-                                    <button
-                                        onClick={() => {
-                                            handleStatusChange(selectedSalary._id, 'cancelled');
-                                            closeModal();
-                                        }}
-                                        className="px-6 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors duration-200"
-                                    >
-                                        Cancel Salary
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            handleStatusChange(selectedSalary._id, 'paid');
-                                            closeModal();
-                                        }}
-                                        className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all duration-200"
-                                    >
-                                        Mark as Paid
-                                    </button>
-                                </div>
-                            )}
-
-                            {selectedSalary.status !== 'pending' && (
-                                <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
-                                    <button
-                                        onClick={closeModal}
-                                        className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all duration-200"
-                                    >
-                                        Close
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            closeModal();
-                                            openEditModal(selectedSalary);
-                                        }}
-                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200"
-                                    >
-                                        Edit Salary
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Add custom animations */}
+            <style jsx>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                .animate-fadeIn {
+                    animation: fadeIn 0.5s ease-out;
+                }
+                
+                .animate-fadeInUp {
+                    animation: fadeInUp 0.6s ease-out;
+                }
+            `}</style>
         </div>
     );
 }
 
-export default Salaries;
+export default GetReport;
