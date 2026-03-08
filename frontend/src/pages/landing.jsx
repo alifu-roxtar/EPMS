@@ -12,7 +12,7 @@ import {
   FaUsers, FaClock, FaMoneyBillWave, FaShieldAlt, 
   FaChartLine, FaCloud, FaMobile, FaHeadset,
   FaArrowRight, FaCheckCircle, FaPlay, FaStar,
-  FaFacebook, FaTwitter, FaLinkedin, FaInstagram,
+  FaFacebook, FaTwitter, FaGithub, FaInstagram,
   FaBars, FaTimes, FaCalculator, FaFileInvoice,
   FaUserCheck, FaRocket,
   FaFileExport, FaGlobe
@@ -428,18 +428,18 @@ const LandingPage = () => {
             <div>
               <h4 className="text-lg font-bold mb-4">Connect With Us</h4>
               <div className="flex space-x-4">
-                <a href="#" className="bg-gray-800 p-3 rounded-full hover:bg-blue-600 transition-all duration-300">
+                <Link to="https://web.facebook.com/profile.php?id=61562243137991&_rdc=1&_rdr#" className="bg-gray-800 p-3 rounded-full hover:bg-blue-600 transition-all duration-300">
                   <FaFacebook />
-                </a>
-                <a href="#" className="bg-gray-800 p-3 rounded-full hover:bg-white hover:text-black transition-all duration-300">
+                </Link>
+                <Link to="https://x.com/AlifuSheja09" className="bg-gray-800 p-3 rounded-full hover:bg-white hover:text-black transition-all duration-300">
                   <FaXTwitter />
-                </a>
-                <a href="#" className="bg-gray-800 p-3 rounded-full hover:bg-blue-700 transition-all duration-300">
-                  <FaLinkedin />
-                </a>
-                <a href="#" className="bg-gray-800 p-3 rounded-full hover:bg-pink-600 transition-all duration-300">
+                </Link>
+                <Link to="http://github.com/alifu-roxtar/" className="bg-gray-800 p-3 rounded-full hover:bg-blue-700 transition-all duration-300">
+                  <FaGithub />
+                </Link>
+                <Link to="https://www.instagram.com/alifu_roxtar_09/" className="bg-gray-800 p-3 rounded-full hover:bg-pink-600 transition-all duration-300">
                   <FaInstagram />
-                </a>
+                </Link>
               </div>
             </div>
           </div>
