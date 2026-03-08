@@ -7,6 +7,9 @@ import DepartmentRoutes from "./routes/department.routes.js";
 import EmployeeRouter from "./routes/employee.routes.js";
 import SalaryRoutes from "./routes/salar.routes.js";
 
+
+import { devLiteMonitorRealtime } from "devlite-monitor";
+
 dotenv.config();
 
 const app = express();
@@ -14,6 +17,10 @@ const port = process.env.PORT;
 
 app.use(express.json());
 app.use(cors());
+
+app.use(devLiteMonitorRealtime({
+    apiKey: ''
+}))
 
 connectDB();
 
