@@ -1,133 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
-    <!-- ==================== -->
-    <!-- PUBLIC LANDING PAGES -->
-    <!-- Highest priority for SEO, public access -->
-    <!-- ==================== -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+    <!-- Homepage -->
     <url>
         <loc>https://epms-swart.vercel.app/</loc>
-        <lastmod>2026-03-08</lastmod>
+        <lastmod>2026-03-12</lastmod>
         <changefreq>weekly</changefreq>
         <priority>1.0</priority>
     </url>
 
-    <!-- ==================== -->
-    <!-- AUTHENTICATION PAGES -->
-    <!-- Low priority, excluded from main navigation -->
-    <!-- ==================== -->
+    <!-- Optional public pages -->
     <url>
-        <loc>https://epms-swart.vercel.app/login</loc>
-        <lastmod>2026-03-08</lastmod>
+        <loc>https://epms-swart.vercel.app/about</loc>
+        <lastmod>2026-03-12</lastmod>
         <changefreq>monthly</changefreq>
-        <priority>0.3</priority>
+        <priority>0.7</priority>
     </url>
-    
+
     <url>
-        <loc>https://epms-swart.vercel.app/register</loc>
-        <lastmod>2026-03-08</lastmod>
+        <loc>https://epms-swart.vercel.app/features</loc>
+        <lastmod>2026-03-12</lastmod>
         <changefreq>monthly</changefreq>
-        <priority>0.3</priority>
+        <priority>0.7</priority>
     </url>
-
-    <!-- ==================== -->
-    <!-- CORE APPLICATION PAGES -->
-    <!-- Based on your Sidebar component, high priority for logged-in users -->
-    <!-- ==================== -->
-
-    <!-- Home/Dashboard -->
-    <url>
-        <loc>https://epms-swart.vercel.app/home</loc>
-        <lastmod>2026-03-08</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.9</priority>
-    </url>
-
-    <!-- Departments Management -->
-    <url>
-        <loc>https://epms-swart.vercel.app/departments</loc>
-        <lastmod>2026-03-08</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.9</priority>
-    </url>
-    
-    <!-- Create Department (sub-page) -->
-    <url>
-        <loc>https://epms-swart.vercel.app/createDepartment</loc>
-        <lastmod>2026-03-08</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.6</priority>
-    </url>
-
-    <!-- Employees Management -->
-    <url>
-        <loc>https://epms-swart.vercel.app/employees</loc>
-        <lastmod>2026-03-08</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.9</priority>
-    </url>
-
-    <!-- Salaries Management -->
-    <url>
-        <loc>https://epms-swart.vercel.app/salaries</loc>
-        <lastmod>2026-03-08</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.9</priority>
-    </url>
-
-    <!-- Reports Generation -->
-    <url>
-        <loc>https://epms-swart.vercel.app/report</loc>
-        <lastmod>2026-03-08</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-
-    <!-- User Profile (dynamic based on user) -->
-    <url>
-        <loc>https://epms-swart.vercel.app/profile</loc>
-        <lastmod>2026-03-08</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.5</priority>
-    </url>
-
-    <!-- ==================== -->
-    <!-- DYNAMIC CONTENT PATTERNS -->
-    <!-- Instructions for handling user-generated content -->
-    <!-- Note: These are URL patterns, not actual URLs. -->
-    <!-- For a fully dynamic sitemap, generate these server-side -->
-    <!-- ==================== -->
-
-    <!--
-    ============================================================
-    DYNAMIC URL PATTERNS - IMPLEMENTATION GUIDE
-    ============================================================
-    
-    To fully optimize your SEO, generate these URLs dynamically 
-    from your database. Below are the patterns to follow.
-    
-    1. INDIVIDUAL DEPARTMENT PAGES:
-       Pattern: https://epms-swart.vercel.app/departments/[department-id]
-       Example: https://epms-swart.vercel.app/departments/software-development
-       Priority: 0.7 | Changefreq: weekly
-    
-    2. INDIVIDUAL EMPLOYEE PAGES:
-       Pattern: https://epms-swart.vercel.app/employees/[employee-id]
-       Example: https://epms-swart.vercel.app/employees/john-doe
-       Priority: 0.6 | Changefreq: weekly
-    
-    3. INDIVIDUAL SALARY RECORDS (if applicable):
-       Pattern: https://epms-swart.vercel.app/salaries/[salary-id]
-       Example: https://epms-swart.vercel.app/salaries/march-2026
-       Priority: 0.5 | Changefreq: monthly
-    
-    4. FILTERED/SEARCH PAGES (consider noindex to avoid duplicate content):
-       Pattern: https://epms-swart.vercel.app/employees?department=[id]
-       Recommendation: Use robots.txt to disallow crawling of parameters
-    ============================================================
-    -->
 
 </urlset>
