@@ -19,7 +19,7 @@ function App(){
         <Route path="/register" element={<Reigster />}/>
         <Route path="/home" element={<HomePage />}/>
         <Route path="/" element={<LandingPage />}/>
-        <Route path="/proile/:id" element={<Profile />}/>
+        <Route path="/profile/:id" element={<Profile />}/>
         <Route path="/settings" element={<Settings />}/>
         <Route path="/report" element={<GetReport />}/>
         <Route path="/salaries" element={<Salaries />}/>
