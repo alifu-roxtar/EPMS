@@ -22,14 +22,21 @@ function SideBar() {
     const [collapsed, setCollapsed] = useState(false);
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        departments: 0,
+        employees: 0
+    });
+    const [statsLoading, setStatsLoading] = useState(true);
+    
     const openLogout = () => setLogout(true);
     const closeLogout = () => setLogout(false);
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Fetch user data on component mount
+    // Fetch user data and stats on component mount
     useEffect(() => {
         fetchUserData();
+        fetchStats();
     }, []);
 
     const fetchUserData = async () => {
@@ -53,6 +60,34 @@ function SideBar() {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchStats = async () => {
+        setStatsLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            
+            // Fetch departments count
+            const deptRes = await API.get('/departments/all', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            // Fetch employees count
+            const empRes = await API.get('/employees/all', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const employeesData = empRes.data.employees || empRes.data;
+            
+            setStats({
+                departments: deptRes.data.length || 0,
+                employees: employeesData.length || 0
+            });
+        } catch (error) {
+            console.error("Error fetching stats:", error);
+        } finally {
+            setStatsLoading(false);
         }
     };
 
@@ -234,7 +269,7 @@ function SideBar() {
                         })}
                     </div>
 
-                    {/* Quick Stats */}
+                    {/* Quick Stats with Real Data */}
                     {!collapsed && (
                         <div className="mt-8 p-4 rounded-xl bg-gradient-to-br from-blue-600/20 
                             to-purple-600/20 border border-white/10">
@@ -242,15 +277,33 @@ function SideBar() {
                                 <FaChartPie className="text-lg" />
                                 <span className="text-xs font-semibold uppercase tracking-wider">Quick Stats</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="text-center">
-                                    <p className="text-xl font-bold text-white">12</p>
-                                    <p className="text-xs text-gray-400">Depts</p>
+                            
+                            {statsLoading ? (
+                                <div className="space-y-3">
+                                    <div className="h-8 bg-white/10 rounded animate-pulse"></div>
+                                    <div className="h-8 bg-white/10 rounded animate-pulse"></div>
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-xl font-bold text-white">48</p>
-                                    <p className="text-xs text-gray-400">Employees</p>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="text-center p-2 bg-white/5 rounded-lg">
+                                        <p className="text-2xl font-bold text-white">{stats.departments}</p>
+                                        <p className="text-xs text-gray-400">Departments</p>
+                                    </div>
+                                    <div className="text-center p-2 bg-white/5 rounded-lg">
+                                        <p className="text-2xl font-bold text-white">{stats.employees}</p>
+                                        <p className="text-xs text-gray-400">Employees</p>
+                                    </div>
                                 </div>
+                            )}
+                            
+                            {/* View All Links */}
+                            <div className="mt-3 flex justify-between text-xs">
+                                <Link to="/departments" className="text-blue-400 hover:text-blue-300 transition-colors">
+                                    View all →
+                                </Link>
+                                <Link to="/employees" className="text-blue-400 hover:text-blue-300 transition-colors">
+                                    View all →
+                                </Link>
                             </div>
                         </div>
                     )}
@@ -333,7 +386,7 @@ function SideBar() {
                                 )}
                             </p>
                             
-                            {/* Session Info */}
+                            {/* Session Info with Stats */}
                             <div className="bg-white/5 rounded-xl p-4 mb-6">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-gray-400">Active Session</span>
@@ -342,6 +395,14 @@ function SideBar() {
                                 <div className="flex items-center justify-between text-sm mt-2">
                                     <span className="text-gray-400">Account</span>
                                     <span className="text-white">{user?.email || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm mt-2">
+                                    <span className="text-gray-400">Departments</span>
+                                    <span className="text-white">{stats.departments}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm mt-2">
+                                    <span className="text-gray-400">Employees</span>
+                                    <span className="text-white">{stats.employees}</span>
                                 </div>
                             </div>
 
