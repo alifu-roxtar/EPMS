@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
     FaHome, 
     FaBuilding, 
@@ -9,22 +9,52 @@ import {
     FaChevronLeft,
     FaChevronRight,
     FaCog,
-    FaBell,
     FaUserCircle,
     FaChartPie,
     FaMoneyBillWave
 } from "react-icons/fa";
 import { FaMoneyBill1Wave } from "react-icons/fa6";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import API from "../../components/api";
 
 function SideBar() {
     const [logout, setLogout] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
-    const [showNotifications, setShowNotifications] = useState(false);
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
     const openLogout = () => setLogout(true);
     const closeLogout = () => setLogout(false);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Fetch user data on component mount
+    useEffect(() => {
+        fetchUserData();
+    }, []);
+
+    const fetchUserData = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            const res = await API.get('/users/getme', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setUser(res.data);
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            if (error.response?.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('uid');
+                navigate('/login');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -43,6 +73,28 @@ function SideBar() {
         { path: '/salaries', icon: FaMoneyBill1Wave, label: 'Salaries', color: 'from-purple-500 to-purple-600' },
         { path: '/report', icon: FaFileExport, label: 'Reports', color: 'from-red-500 to-red-600' },
     ];
+
+    // Get user initials for avatar
+    const getUserInitials = () => {
+        if (!user?.username) return 'U';
+        return user.username.charAt(0).toUpperCase();
+    };
+
+    // Get user display name
+    const getUserDisplayName = () => {
+        if (!user?.username) return 'User';
+        return user.username.length > 15 
+            ? `${user.username.substring(0, 15)}...` 
+            : user.username;
+    };
+
+    // Get user email (truncated if too long)
+    const getUserEmail = () => {
+        if (!user?.email) return 'user@epms.com';
+        return user.email.length > 20 
+            ? `${user.email.substring(0, 20)}...` 
+            : user.email;
+    };
 
     return (
         <>
@@ -72,8 +124,6 @@ function SideBar() {
                                 transform transition-transform duration-300 hover:scale-110 hover:rotate-3">
                                 <span className="text-2xl font-bold text-white">E</span>
                             </div>
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full 
-                                border-2 border-gray-900 animate-pulse"></div>
                         </div>
                         {!collapsed && (
                             <div className="overflow-hidden">
@@ -87,25 +137,42 @@ function SideBar() {
                     </div>
                 </div>
 
-                {/* User Profile Section */}
+                {/* User Profile Section with Real Data */}
                 <div className="px-4 py-4 border-b border-white/10">
-                    <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 
-                        hover:bg-white/10 transition-all duration-300 cursor-pointer group">
-                        <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 
-                                flex items-center justify-center shadow-lg">
-                                <FaUserCircle className="text-2xl text-white" />
-                            </div>
-                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 
-                                rounded-full border-2 border-gray-800"></div>
+                    {loading ? (
+                        <div className="flex items-center gap-3 p-2">
+                            <div className="w-10 h-10 rounded-full bg-gray-700 animate-pulse"></div>
+                            {!collapsed && (
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-4 bg-gray-700 rounded animate-pulse w-3/4"></div>
+                                    <div className="h-3 bg-gray-700 rounded animate-pulse w-1/2"></div>
+                                </div>
+                            )}
                         </div>
-                        {!collapsed && (
-                            <div className="flex-1">
-                                <h3 className="text-sm font-semibold text-white">Admin User</h3>
-                                <p className="text-xs text-gray-400">admin@epms.com</p>
+                    ) : (
+                        <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 
+                            hover:bg-white/10 transition-all duration-300 cursor-pointer group"
+                            onClick={() => navigate('/profile')}>
+                            <div className="relative">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 
+                                    flex items-center justify-center shadow-lg font-bold text-white">
+                                    {getUserInitials()}
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 
+                                    rounded-full border-2 border-gray-800"></div>
                             </div>
-                        )}
-                    </div>
+                            {!collapsed && (
+                                <div className="flex-1">
+                                    <h3 className="text-sm font-semibold text-white">
+                                        {getUserDisplayName()}
+                                    </h3>
+                                    <p className="text-xs text-gray-400">
+                                        {getUserEmail()}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Navigation Menu */}
@@ -193,37 +260,15 @@ function SideBar() {
                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-gray-900 to-transparent">
                     <div className="space-y-2">
                         {/* Settings Icon */}
-                        <button className={`w-full ${collapsed ? 'px-2' : 'px-4'} py-3 rounded-xl 
-                            text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300 
-                            flex items-center ${collapsed ? 'justify-center' : 'justify-start'} gap-3 group`}>
+                        <button 
+                            onClick={() => navigate('/settings')}
+                            className={`w-full ${collapsed ? 'px-2' : 'px-4'} py-3 rounded-xl 
+                                text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300 
+                                flex items-center ${collapsed ? 'justify-center' : 'justify-start'} gap-3 group`}
+                        >
                             <FaCog className={`text-xl transition-transform duration-300 
                                 group-hover:rotate-180 group-hover:text-blue-400`} />
                             {!collapsed && <span className="text-sm">Settings</span>}
-                        </button>
-
-                        {/* Notifications */}
-                        <button 
-                            onClick={() => setShowNotifications(!showNotifications)}
-                            className={`w-full ${collapsed ? 'px-2' : 'px-4'} py-3 rounded-xl 
-                                text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300 
-                                flex items-center ${collapsed ? 'justify-center' : 'justify-start'} gap-3 relative group`}>
-                            <FaBell className="text-xl" />
-                            {!collapsed && <span className="text-sm">Notifications</span>}
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full 
-                                animate-pulse"></span>
-                            
-                            {/* Notifications Dropdown */}
-                            {showNotifications && !collapsed && (
-                                <div className="absolute bottom-full left-0 mb-2 w-64 bg-gray-800 
-                                    rounded-xl shadow-2xl border border-white/10 overflow-hidden">
-                                    <div className="p-3 border-b border-white/10">
-                                        <h4 className="text-sm font-semibold text-white">Notifications</h4>
-                                    </div>
-                                    <div className="p-3">
-                                        <p className="text-xs text-gray-400">No new notifications</p>
-                                    </div>
-                                </div>
-                            )}
                         </button>
 
                         {/* Logout Button */}
@@ -281,7 +326,11 @@ function SideBar() {
                         {/* Modal Body */}
                         <div className="p-6">
                             <p className="text-center text-gray-300 mb-6">
-                                Are you sure you want to logout from your account?
+                                {user ? (
+                                    <>Are you sure you want to logout <span className="font-semibold text-white">{user.username}</span>?</>
+                                ) : (
+                                    'Are you sure you want to logout from your account?'
+                                )}
                             </p>
                             
                             {/* Session Info */}
@@ -291,8 +340,8 @@ function SideBar() {
                                     <span className="text-green-400">● Online</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm mt-2">
-                                    <span className="text-gray-400">Last Activity</span>
-                                    <span className="text-white">Just now</span>
+                                    <span className="text-gray-400">Account</span>
+                                    <span className="text-white">{user?.email || 'N/A'}</span>
                                 </div>
                             </div>
 
