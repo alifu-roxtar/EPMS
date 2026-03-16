@@ -6,12 +6,12 @@ import {
     FaFileExport, 
     FaUsers, 
     FaSignOutAlt,
-    FaChevronLeft,
-    FaChevronRight,
     FaCog,
     FaUserCircle,
     FaChartPie,
-    FaMoneyBillWave
+    FaMoneyBillWave,
+    FaBars,
+    FaTimes
 } from "react-icons/fa";
 import { FaMoneyBill1Wave } from "react-icons/fa6";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -19,7 +19,7 @@ import API from "../../components/api";
 
 function SideBar() {
     const [logout, setLogout] = useState(false);
-    const [collapsed, setCollapsed] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
@@ -38,6 +38,11 @@ function SideBar() {
         fetchUserData();
         fetchStats();
     }, []);
+
+    // Close mobile menu when route changes
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [location.pathname]);
 
     const fetchUserData = async () => {
         try {
@@ -133,23 +138,27 @@ function SideBar() {
 
     return (
         <>
-            {/* Sidebar Container */}
-            <div className={`h-screen fixed left-0 top-0 transition-all duration-500 ease-in-out z-50
-                ${collapsed ? 'w-24' : 'w-72'} 
-                bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900
-                shadow-2xl shadow-black/50 border-r border-white/10`}>
-                
-                {/* Toggle Button */}
-                <button 
-                    onClick={() => setCollapsed(!collapsed)}
-                    className="absolute -right-3 top-20 bg-gradient-to-r from-blue-600 to-blue-700 
-                        hover:from-blue-700 hover:to-blue-800 text-white p-2 rounded-full 
-                        shadow-lg shadow-blue-500/50 transition-all duration-300 
-                        hover:scale-110 z-10 border-2 border-white/20"
+            {/* Mobile Menu Toggle - Visible only on small screens */}
+            <div className="lg:hidden fixed top-4 left-4 z-50">
+                <button
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                 >
-                    {collapsed ? <FaChevronRight className="text-sm" /> : <FaChevronLeft className="text-sm" />}
+                    {mobileMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
                 </button>
+            </div>
 
+            {/* Sidebar - Always visible on large screens, toggleable on mobile */}
+            <div className={`
+                fixed left-0 top-0 h-screen z-40
+                transition-all duration-500 ease-in-out
+                ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+                lg:translate-x-0
+                w-72
+                bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900
+                shadow-2xl shadow-black/50 border-r border-white/10
+                overflow-y-auto
+            `}>
                 {/* Header Section with Logo */}
                 <div className="relative pt-8 pb-6 px-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
@@ -160,16 +169,22 @@ function SideBar() {
                                 <span className="text-2xl font-bold text-white">E</span>
                             </div>
                         </div>
-                        {!collapsed && (
-                            <div className="overflow-hidden">
-                                <h1 className="text-xl font-bold text-white whitespace-nowrap
-                                    bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                                    EPMS
-                                </h1>
-                                <p className="text-xs text-gray-400 whitespace-nowrap">Enterprise Management</p>
-                            </div>
-                        )}
+                        <div className="overflow-hidden">
+                            <h1 className="text-xl font-bold text-white whitespace-nowrap
+                                bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                                EPMS
+                            </h1>
+                            <p className="text-xs text-gray-400 whitespace-nowrap">Enterprise Management</p>
+                        </div>
                     </div>
+
+                    {/* Close button for mobile */}
+                    <button 
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                    >
+                        <FaTimes size={20} />
+                    </button>
                 </div>
 
                 {/* User Profile Section with Real Data */}
@@ -177,17 +192,18 @@ function SideBar() {
                     {loading ? (
                         <div className="flex items-center gap-3 p-2">
                             <div className="w-10 h-10 rounded-full bg-gray-700 animate-pulse"></div>
-                            {!collapsed && (
-                                <div className="flex-1 space-y-2">
-                                    <div className="h-4 bg-gray-700 rounded animate-pulse w-3/4"></div>
-                                    <div className="h-3 bg-gray-700 rounded animate-pulse w-1/2"></div>
-                                </div>
-                            )}
+                            <div className="flex-1 space-y-2">
+                                <div className="h-4 bg-gray-700 rounded animate-pulse w-3/4"></div>
+                                <div className="h-3 bg-gray-700 rounded animate-pulse w-1/2"></div>
+                            </div>
                         </div>
                     ) : (
                         <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 
                             hover:bg-white/10 transition-all duration-300 cursor-pointer group"
-                            onClick={() => navigate('/profile')}>
+                            onClick={() => {
+                                navigate('/profile');
+                                setMobileMenuOpen(false);
+                            }}>
                             <div className="relative">
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 
                                     flex items-center justify-center shadow-lg font-bold text-white">
@@ -196,23 +212,20 @@ function SideBar() {
                                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 
                                     rounded-full border-2 border-gray-800"></div>
                             </div>
-                            {!collapsed && (
-                                <div className="flex-1">
-                                    <h3 className="text-sm font-semibold text-white">
-                                        {getUserDisplayName()}
-                                    </h3>
-                                    <p className="text-xs text-gray-400">
-                                        {getUserEmail()}
-                                    </p>
-                                </div>
-                            )}
+                            <div className="flex-1">
+                                <h3 className="text-sm font-semibold text-white">
+                                    {getUserDisplayName()}
+                                </h3>
+                                <p className="text-xs text-gray-400">
+                                    {getUserEmail()}
+                                </p>
+                            </div>
                         </div>
                     )}
                 </div>
 
                 {/* Navigation Menu */}
-                <div className="flex-1 px-3 py-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 
-                    scrollbar-track-transparent h-[calc(100vh-280px)]">
+                <div className="flex-1 px-3 py-6">
                     <div className="space-y-2">
                         {menuItems.map((item, index) => {
                             const Icon = item.icon;
@@ -222,7 +235,8 @@ function SideBar() {
                                 <Link
                                     key={index}
                                     to={item.path}
-                                    className={`group relative flex items-center ${collapsed ? 'justify-center' : 'justify-start'} 
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={`group relative flex items-center justify-start 
                                         gap-3 px-4 py-3 rounded-xl transition-all duration-300
                                         ${active 
                                             ? `bg-gradient-to-r ${item.color} text-white shadow-lg shadow-${item.color.split('-')[1]}-500/30` 
@@ -236,110 +250,113 @@ function SideBar() {
                                     )}
                                     
                                     {/* Icon */}
-                                    <div className={`relative ${collapsed ? 'mr-0' : 'mr-3'}`}>
+                                    <div className="relative">
                                         <Icon className={`text-xl transition-all duration-300 
                                             ${active ? 'text-white' : 'text-gray-400 group-hover:text-white'}
                                             group-hover:scale-110 group-hover:rotate-3`} />
-                                        {!collapsed && active && (
+                                        {active && (
                                             <span className="absolute -right-1 -top-1 w-2 h-2 bg-white 
                                                 rounded-full animate-ping"></span>
                                         )}
                                     </div>
                                     
                                     {/* Label */}
-                                    {!collapsed && (
-                                        <span className="text-sm font-medium whitespace-nowrap">
-                                            {item.label}
-                                        </span>
-                                    )}
-                                    
-                                    {/* Tooltip for collapsed mode */}
-                                    {collapsed && (
-                                        <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 
-                                            text-white text-sm rounded-lg opacity-0 invisible 
-                                            group-hover:opacity-100 group-hover:visible transition-all 
-                                            duration-300 whitespace-nowrap shadow-xl border border-white/10">
-                                            {item.label}
-                                            <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 
-                                                border-8 border-transparent border-r-gray-900"></div>
-                                        </div>
-                                    )}
+                                    <span className="text-sm font-medium whitespace-nowrap">
+                                        {item.label}
+                                    </span>
                                 </Link>
                             );
                         })}
                     </div>
 
-                    {/* Quick Stats with Real Data */}
-                    {!collapsed && (
-                        <div className="mt-8 p-4 rounded-xl bg-gradient-to-br from-blue-600/20 
-                            to-purple-600/20 border border-white/10">
-                            <div className="flex items-center gap-2 text-blue-400 mb-3">
-                                <FaChartPie className="text-lg" />
-                                <span className="text-xs font-semibold uppercase tracking-wider">Quick Stats</span>
-                            </div>
-                            
-                            {statsLoading ? (
-                                <div className="space-y-3">
-                                    <div className="h-8 bg-white/10 rounded animate-pulse"></div>
-                                    <div className="h-8 bg-white/10 rounded animate-pulse"></div>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="text-center p-2 bg-white/5 rounded-lg">
-                                        <p className="text-2xl font-bold text-white">{stats.departments}</p>
-                                        <p className="text-xs text-gray-400">Departments</p>
-                                    </div>
-                                    <div className="text-center p-2 bg-white/5 rounded-lg">
-                                        <p className="text-2xl font-bold text-white">{stats.employees}</p>
-                                        <p className="text-xs text-gray-400">Employees</p>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {/* View All Links */}
-                            <div className="mt-3 flex justify-between text-xs">
-                                <Link to="/departments" className="text-blue-400 hover:text-blue-300 transition-colors">
-                                    View all →
-                                </Link>
-                                <Link to="/employees" className="text-blue-400 hover:text-blue-300 transition-colors">
-                                    View all →
-                                </Link>
-                            </div>
+                    {/* Quick Stats */}
+                    <div className="mt-8 p-4 rounded-xl bg-gradient-to-br from-blue-600/20 
+                        to-purple-600/20 border border-white/10">
+                        <div className="flex items-center gap-2 text-blue-400 mb-3">
+                            <FaChartPie className="text-lg" />
+                            <span className="text-xs font-semibold uppercase tracking-wider">Quick Stats</span>
                         </div>
-                    )}
+                        
+                        {statsLoading ? (
+                            <div className="space-y-3">
+                                <div className="h-8 bg-white/10 rounded animate-pulse"></div>
+                                <div className="h-8 bg-white/10 rounded animate-pulse"></div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="text-center p-2 bg-white/5 rounded-lg">
+                                    <p className="text-2xl font-bold text-white">{stats.departments}</p>
+                                    <p className="text-xs text-gray-400">Departments</p>
+                                </div>
+                                <div className="text-center p-2 bg-white/5 rounded-lg">
+                                    <p className="text-2xl font-bold text-white">{stats.employees}</p>
+                                    <p className="text-xs text-gray-400">Employees</p>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* View All Links */}
+                        <div className="mt-3 flex justify-between text-xs">
+                            <Link 
+                                to="/departments" 
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                                View all →
+                            </Link>
+                            <Link 
+                                to="/employees" 
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                                View all →
+                            </Link>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Bottom Actions */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-gray-900 to-transparent">
+                <div className="p-4 mt-4 border-t border-white/10">
                     <div className="space-y-2">
-                        {/* Settings Icon */}
+                        {/* Settings */}
                         <button 
-                            onClick={() => navigate('/settings')}
-                            className={`w-full ${collapsed ? 'px-2' : 'px-4'} py-3 rounded-xl 
+                            onClick={() => {
+                                navigate('/settings');
+                                setMobileMenuOpen(false);
+                            }}
+                            className="w-full px-4 py-3 rounded-xl 
                                 text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300 
-                                flex items-center ${collapsed ? 'justify-center' : 'justify-start'} gap-3 group`}
+                                flex items-center justify-start gap-3 group"
                         >
                             <FaCog className={`text-xl transition-transform duration-300 
                                 group-hover:rotate-180 group-hover:text-blue-400`} />
-                            {!collapsed && <span className="text-sm">Settings</span>}
+                            <span className="text-sm">Settings</span>
                         </button>
 
                         {/* Logout Button */}
                         <button
                             onClick={openLogout}
-                            className={`w-full ${collapsed ? 'px-2' : 'px-4'} py-3 rounded-xl 
+                            className="w-full px-4 py-3 rounded-xl 
                                 bg-gradient-to-r from-red-600/20 to-red-700/20 
                                 hover:from-red-600 hover:to-red-700 text-red-400 hover:text-white 
-                                transition-all duration-300 flex items-center ${collapsed ? 'justify-center' : 'justify-start'} 
-                                gap-3 group border border-red-500/20 hover:border-red-500/50`}
+                                transition-all duration-300 flex items-center justify-start 
+                                gap-3 group border border-red-500/20 hover:border-red-500/50"
                         >
                             <FaSignOutAlt className={`text-xl transition-transform duration-300 
                                 group-hover:rotate-180`} />
-                            {!collapsed && <span className="text-sm font-medium">Logout</span>}
+                            <span className="text-sm font-medium">Logout</span>
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Overlay for mobile menu */}
+            {mobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+            )}
 
             {/* Logout Confirmation Modal */}
             {logout && (
@@ -435,20 +452,6 @@ function SideBar() {
 
             {/* Custom Scrollbar Styles */}
             <style jsx>{`
-                .scrollbar-thin::-webkit-scrollbar {
-                    width: 4px;
-                }
-                .scrollbar-thin::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .scrollbar-thin::-webkit-scrollbar-thumb {
-                    background: #4B5563;
-                    border-radius: 20px;
-                }
-                .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-                    background: #6B7280;
-                }
-                
                 @keyframes fadeIn {
                     from { opacity: 0; }
                     to { opacity: 1; }
