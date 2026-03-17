@@ -14,7 +14,7 @@ import {
     FaTimes
 } from "react-icons/fa";
 import { FaMoneyBill1Wave } from "react-icons/fa6";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../../components/api";
 
 function SideBar() {
@@ -102,6 +102,11 @@ function SideBar() {
         navigate('/login');
     };
 
+    const handleNavigation = (path) => {
+        navigate(path);
+        setMobileMenuOpen(false);
+    };
+
     const isActive = (path) => {
         return location.pathname === path;
     };
@@ -128,30 +133,29 @@ function SideBar() {
             : user.username;
     };
 
-    // Get user email (truncated if too long)
+    // Get user email
     const getUserEmail = () => {
         if (!user?.email) return 'user@epms.com';
-        return user.email.length > 20 
-            ? `${user.email.substring(0, 20)}...` 
-            : user.email;
+        return user.email;
     };
 
     return (
         <>
-            {/* Mobile Menu Toggle - Visible only on small screens */}
-            <div className="lg:hidden fixed top-4 left-4 z-50">
-                <button
-                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                >
-                    {mobileMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
-                </button>
-            </div>
+            {/* Mobile Menu Toggle - Only ONE button, always at top left */}
+            <button
+                onClick={() => setMobileMenuOpen(true)}
+                className={`lg:hidden fixed top-4 left-4 z-50 bg-gradient-to-r from-blue-600 to-purple-600 
+                    text-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 
+                    hover:scale-105 ${mobileMenuOpen ? 'hidden' : 'block'}`}
+                aria-label="Open menu"
+            >
+                <FaBars size={24} />
+            </button>
 
-            {/* Sidebar - Always visible on large screens, toggleable on mobile */}
+            {/* Sidebar - Controlled by mobileMenuOpen state */}
             <div className={`
-                fixed left-0 top-0 h-screen z-40
-                transition-all duration-500 ease-in-out
+                fixed left-0 top-0 h-screen z-50
+                transition-transform duration-300 ease-in-out
                 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
                 lg:translate-x-0
                 w-72
@@ -159,35 +163,39 @@ function SideBar() {
                 shadow-2xl shadow-black/50 border-r border-white/10
                 overflow-y-auto
             `}>
-                {/* Header Section with Logo */}
-                <div className="relative pt-8 pb-6 px-4 border-b border-white/10">
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 
-                                flex items-center justify-center shadow-lg shadow-blue-600/30 
-                                transform transition-transform duration-300 hover:scale-110 hover:rotate-3">
-                                <span className="text-2xl font-bold text-white">E</span>
+                {/* Header Section with Logo and Close Button */}
+                <div className="sticky top-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 z-10">
+                    <div className="relative pt-8 pb-6 px-4 border-b border-white/10">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 
+                                        flex items-center justify-center shadow-lg shadow-blue-600/30">
+                                        <span className="text-2xl font-bold text-white">E</span>
+                                    </div>
+                                </div>
+                                <div className="overflow-hidden">
+                                    <h1 className="text-xl font-bold text-white whitespace-nowrap
+                                        bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                                        EPMS
+                                    </h1>
+                                    <p className="text-xs text-gray-400 whitespace-nowrap">Enterprise Management</p>
+                                </div>
                             </div>
-                        </div>
-                        <div className="overflow-hidden">
-                            <h1 className="text-xl font-bold text-white whitespace-nowrap
-                                bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                                EPMS
-                            </h1>
-                            <p className="text-xs text-gray-400 whitespace-nowrap">Enterprise Management</p>
+
+                            {/* Close button - Only visible on mobile when menu is open */}
+                            <button 
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="lg:hidden text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                                aria-label="Close menu"
+                            >
+                                <FaTimes size={20} />
+                            </button>
                         </div>
                     </div>
-
-                    {/* Close button for mobile */}
-                    <button 
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-                    >
-                        <FaTimes size={20} />
-                    </button>
                 </div>
 
-                {/* User Profile Section with Real Data */}
+                {/* User Profile Section */}
                 <div className="px-4 py-4 border-b border-white/10">
                     {loading ? (
                         <div className="flex items-center gap-3 p-2">
@@ -198,13 +206,12 @@ function SideBar() {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 
-                            hover:bg-white/10 transition-all duration-300 cursor-pointer group"
-                            onClick={() => {
-                                navigate('/profile');
-                                setMobileMenuOpen(false);
-                            }}>
-                            <div className="relative">
+                        <button 
+                            onClick={() => handleNavigation('/profile')}
+                            className="w-full flex items-center gap-3 p-2 rounded-xl bg-white/5 
+                                hover:bg-white/10 transition-all duration-300 group text-left"
+                        >
+                            <div className="relative flex-shrink-0">
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 
                                     flex items-center justify-center shadow-lg font-bold text-white">
                                     {getUserInitials()}
@@ -212,36 +219,36 @@ function SideBar() {
                                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 
                                     rounded-full border-2 border-gray-800"></div>
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-sm font-semibold text-white">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-semibold text-white truncate">
                                     {getUserDisplayName()}
                                 </h3>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-gray-400 truncate">
                                     {getUserEmail()}
                                 </p>
                             </div>
-                        </div>
+                        </button>
                     )}
                 </div>
 
                 {/* Navigation Menu */}
-                <div className="flex-1 px-3 py-6">
+                <nav className="px-3 py-6" aria-label="Main navigation">
                     <div className="space-y-2">
-                        {menuItems.map((item, index) => {
+                        {menuItems.map((item) => {
                             const Icon = item.icon;
                             const active = isActive(item.path);
                             
                             return (
-                                <Link
-                                    key={index}
-                                    to={item.path}
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className={`group relative flex items-center justify-start 
-                                        gap-3 px-4 py-3 rounded-xl transition-all duration-300
+                                <button
+                                    key={item.path}
+                                    onClick={() => handleNavigation(item.path)}
+                                    className={`w-full group relative flex items-center justify-start 
+                                        gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-left
                                         ${active 
-                                            ? `bg-gradient-to-r ${item.color} text-white shadow-lg shadow-${item.color.split('-')[1]}-500/30` 
+                                            ? `bg-gradient-to-r ${item.color} text-white shadow-lg` 
                                             : 'text-gray-400 hover:bg-white/10 hover:text-white'
                                         }`}
+                                    aria-current={active ? 'page' : undefined}
                                 >
                                     {/* Active Indicator */}
                                     {active && (
@@ -250,21 +257,15 @@ function SideBar() {
                                     )}
                                     
                                     {/* Icon */}
-                                    <div className="relative">
-                                        <Icon className={`text-xl transition-all duration-300 
-                                            ${active ? 'text-white' : 'text-gray-400 group-hover:text-white'}
-                                            group-hover:scale-110 group-hover:rotate-3`} />
-                                        {active && (
-                                            <span className="absolute -right-1 -top-1 w-2 h-2 bg-white 
-                                                rounded-full animate-ping"></span>
-                                        )}
-                                    </div>
+                                    <Icon className={`text-xl transition-all duration-300 
+                                        ${active ? 'text-white' : 'text-gray-400 group-hover:text-white'}
+                                        group-hover:scale-110 group-hover:rotate-3`} />
                                     
                                     {/* Label */}
-                                    <span className="text-sm font-medium whitespace-nowrap">
+                                    <span className="text-sm font-medium">
                                         {item.label}
                                     </span>
-                                </Link>
+                                </button>
                             );
                         })}
                     </div>
@@ -297,33 +298,28 @@ function SideBar() {
                         
                         {/* View All Links */}
                         <div className="mt-3 flex justify-between text-xs">
-                            <Link 
-                                to="/departments" 
-                                onClick={() => setMobileMenuOpen(false)}
+                            <button 
+                                onClick={() => handleNavigation('/departments')}
                                 className="text-blue-400 hover:text-blue-300 transition-colors"
                             >
                                 View all →
-                            </Link>
-                            <Link 
-                                to="/employees" 
-                                onClick={() => setMobileMenuOpen(false)}
+                            </button>
+                            <button 
+                                onClick={() => handleNavigation('/employees')}
                                 className="text-blue-400 hover:text-blue-300 transition-colors"
                             >
                                 View all →
-                            </Link>
+                            </button>
                         </div>
                     </div>
-                </div>
+                </nav>
 
                 {/* Bottom Actions */}
-                <div className="p-4 mt-4 border-t border-white/10">
+                <div className="sticky bottom-0 bg-gradient-to-t from-gray-900 via-gray-800 to-transparent p-4">
                     <div className="space-y-2">
                         {/* Settings */}
                         <button 
-                            onClick={() => {
-                                navigate('/settings');
-                                setMobileMenuOpen(false);
-                            }}
+                            onClick={() => handleNavigation('/settings')}
                             className="w-full px-4 py-3 rounded-xl 
                                 text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300 
                                 flex items-center justify-start gap-3 group"
@@ -353,14 +349,14 @@ function SideBar() {
             {/* Overlay for mobile menu */}
             {mobileMenuOpen && (
                 <div 
-                    className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
                     onClick={() => setMobileMenuOpen(false)}
                 />
             )}
 
             {/* Logout Confirmation Modal */}
             {logout && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <div 
                         className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
@@ -403,7 +399,7 @@ function SideBar() {
                                 )}
                             </p>
                             
-                            {/* Session Info with Stats */}
+                            {/* Session Info */}
                             <div className="bg-white/5 rounded-xl p-4 mb-6">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-gray-400">Active Session</span>
@@ -450,13 +446,8 @@ function SideBar() {
                 </div>
             )}
 
-            {/* Custom Scrollbar Styles */}
+            {/* Animations */}
             <style jsx>{`
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                
                 @keyframes slideUp {
                     from {
                         opacity: 0;
@@ -466,10 +457,6 @@ function SideBar() {
                         opacity: 1;
                         transform: translateY(0);
                     }
-                }
-                
-                .animate-fadeIn {
-                    animation: fadeIn 0.3s ease-out;
                 }
                 
                 .animate-slideUp {
